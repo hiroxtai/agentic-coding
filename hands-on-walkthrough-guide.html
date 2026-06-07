@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>実践ハンズオン ― 統合ワークフローでパスワードリセットを実装する（2026）</title>
+<style>
+  :root{
+    --bg:#F4EFE7; --surface:#FFFFFF; --surface-2:#FBF8F3;
+    --ink:#1C1B18; --muted:#6E6960; --faint:#9B958B;
+    --accent:#C15F3C; --accent-deep:#A84A2A; --accent-soft:#F2DBCF;
+    --line:#E5DDD1; --line-strong:#D6CCBD;
+    --good:#3F7D54; --good-soft:#E0EEE3;
+    --warn:#B8860B; --warn-soft:#F6ECCF;
+    --info:#3A6B8C; --info-soft:#DEEAF1;
+    --violet:#6A5099; --violet-soft:#E8E1F2;
+    --shadow:0 1px 2px rgba(40,30,20,.04),0 8px 24px rgba(40,30,20,.06);
+    --radius:16px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    line-height:1.85; font-size:16.5px; letter-spacing:.01em; -webkit-font-smoothing:antialiased;}
+  .wrap{max-width:980px; margin:0 auto; padding:0 22px}
+  h1,h2,h3,h4{line-height:1.4; letter-spacing:.005em}
+
+  .hero{background:
+      radial-gradient(110% 130% at 90% -10%, rgba(58,107,140,.18), transparent 55%),
+      radial-gradient(120% 150% at 30% -25%, rgba(63,125,84,.14), transparent 55%),
+      radial-gradient(110% 130% at -10% 0%, rgba(193,95,60,.20), transparent 50%),
+      linear-gradient(180deg,#211F1B 0%, #2B2823 100%);
+    color:#F4EFE7; padding:62px 0 54px; position:relative; overflow:hidden;}
+  .hero .wrap{position:relative; z-index:2}
+  .kicker{display:inline-block; font-size:12.5px; letter-spacing:.16em; text-transform:uppercase; color:#E6BBA6; border:1px solid rgba(230,187,166,.4); padding:5px 12px; border-radius:999px; margin-bottom:22px}
+  .hero h1{font-size:34px; margin:0 0 16px; font-weight:800}
+  .hero h1 .em{color:#E89B79}
+  .hero p.lead{font-size:17px; color:#D9D2C7; max-width:780px; margin:0 0 24px}
+  .hero .meta{display:flex; flex-wrap:wrap; gap:10px 22px; font-size:13.5px; color:#B2B6AE}
+  .hero .meta b{color:#E6BBA6; font-weight:600}
+  .hero-figs{display:flex; flex-wrap:wrap; gap:10px; margin-top:28px}
+  .chip{background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); padding:7px 14px; border-radius:999px; font-size:13px; color:#EFE8DC}
+  .chip b{color:#E89B79; font-weight:700}
+
+  section{padding:42px 0 8px}
+  .sec-head{display:flex; align-items:baseline; gap:14px; margin-bottom:8px}
+  .sec-num{font-size:13px; font-weight:800; color:var(--accent); letter-spacing:.1em; border:1.5px solid var(--accent-soft); background:var(--surface); border-radius:8px; padding:3px 9px; white-space:nowrap}
+  h2{font-size:24px; margin:0; font-weight:800}
+  .sec-sub{color:var(--muted); font-size:15.5px; margin:6px 0 20px}
+  p{margin:0 0 16px}
+  a{color:var(--accent-deep); text-decoration:none; border-bottom:1px solid var(--accent-soft)}
+  a:hover{border-bottom-color:var(--accent)}
+  strong{font-weight:700}
+  .em-ink{color:var(--accent-deep); font-weight:700}
+
+  .callout{border-radius:14px; padding:15px 18px; margin:18px 0; font-size:15px; border:1px solid}
+  .callout .ttl{font-weight:800; font-size:13.5px; letter-spacing:.04em; margin-bottom:6px}
+  .c-key{background:var(--accent-soft); border-color:#E7C3B2; color:#5e2a17}
+  .c-key .ttl{color:var(--accent-deep)}
+  .c-good{background:var(--good-soft); border-color:#BFDDC7; color:#234b30}
+  .c-good .ttl{color:var(--good)}
+  .c-info{background:var(--info-soft); border-color:#C5DAE7; color:#274558}
+  .c-info .ttl{color:var(--info)}
+
+  .toc{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:22px 26px; box-shadow:var(--shadow); margin:30px 0 6px}
+  .toc h4{margin:0 0 14px; font-size:13px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted)}
+  .toc ol{margin:0; padding:0; list-style:none; counter-reset:t; display:grid; grid-template-columns:1fr 1fr; gap:6px 28px}
+  .toc li{counter-increment:t; font-size:15px; padding:5px 0; border-bottom:1px dashed var(--line)}
+  .toc li a{border:0; color:var(--ink); display:flex; gap:10px; align-items:baseline}
+  .toc li a:hover{color:var(--accent-deep)}
+  .toc li a::before{content:counter(t,decimal-leading-zero); color:var(--accent); font-weight:800; font-size:12.5px; min-width:22px}
+
+  figure{margin:22px 0; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:22px 20px 14px; box-shadow:var(--shadow)}
+  figure svg{display:block; width:100%; height:auto}
+  figcaption{font-size:13px; color:var(--muted); text-align:center; margin-top:12px; padding-top:10px; border-top:1px dashed var(--line)}
+  figcaption b{color:var(--accent-deep)}
+
+  /* step + chat */
+  .step{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:20px 24px; box-shadow:var(--shadow); margin:18px 0}
+  .step-h{display:flex; align-items:center; gap:12px; margin-bottom:4px}
+  .step-n{width:34px;height:34px;border-radius:10px;background:var(--accent);color:#fff;font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .step-h h3{margin:0;font-size:18.5px;font-weight:800}
+  .step-tag{margin-left:auto;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;white-space:nowrap}
+  .t-handoff{background:var(--info-soft);color:var(--info)}
+  .t-interview{background:var(--violet-soft);color:var(--violet)}
+  .t-spec{background:var(--accent-soft);color:var(--accent-deep)}
+  .you{background:#23211C;color:#EFE8DC;border-radius:12px;padding:10px 14px;margin:12px 0 6px;border-left:3px solid var(--accent)}
+  .you .who{display:block;font-size:10.5px;letter-spacing:.08em;color:#E6BBA6;font-weight:700;margin-bottom:5px;text-transform:uppercase}
+  .you code,.you .cmd{font-family:"SF Mono",Menlo,Consolas,monospace;font-size:13px;color:#EFE8DC;line-height:1.6;display:block;white-space:pre-wrap}
+  .you .cmd b{color:#E89B79;font-weight:700}
+  .agent{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:11px 16px;margin:6px 0 10px;font-size:14.5px;color:#3a3833}
+  .agent .who{display:block;font-size:10.5px;letter-spacing:.06em;color:var(--info);font-weight:700;margin-bottom:4px;text-transform:uppercase}
+  .agent.q{border-color:#cfc1ea;background:#F3EFF8}
+  .agent.q .who{color:var(--violet)}
+  .ans{display:inline-block;background:var(--good-soft);color:#234b30;border:1px solid #BFDDC7;border-radius:999px;padding:2px 12px;font-size:13px;font-weight:700;margin:2px 0 10px}
+  .note{background:var(--warn-soft);border:1px solid #E8D49A;border-radius:10px;padding:10px 14px;font-size:13.5px;color:#5c4708;margin:12px 0 2px}
+  .note b{color:#8a6608}
+  .fileout{font-size:12.5px;color:var(--muted);margin:8px 0 0}
+  .fileout b{color:var(--accent-deep)}
+  .fileout code{font-family:"SF Mono",Menlo,Consolas,monospace;font-size:12px;background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:var(--accent-deep)}
+
+  .tbl-wrap{overflow-x:auto; margin:18px 0; border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow)}
+  table{border-collapse:collapse; width:100%; font-size:14px; background:var(--surface)}
+  th,td{text-align:left; padding:11px 15px; border-bottom:1px solid var(--line); vertical-align:top}
+  thead th{background:var(--surface-2); font-weight:700; font-size:13px; border-bottom:2px solid var(--line-strong)}
+  tbody tr:last-child td{border-bottom:0}
+  td.k{font-weight:700;color:var(--accent-deep);white-space:nowrap}
+  td code,.tbl-wrap code{font-family:"SF Mono",Menlo,Consolas,monospace;font-size:12.5px;color:var(--accent-deep);background:var(--surface-2);border:1px solid var(--line);border-radius:5px;padding:1px 6px}
+
+  .div{height:1px;background:linear-gradient(90deg,transparent,var(--line-strong),transparent);margin:30px 0 6px}
+  .dayband{display:flex;align-items:center;gap:12px;margin:34px 0 4px}
+  .dayband .lbl{font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--ink);padding:5px 14px;border-radius:999px}
+  .dayband .line{flex:1;height:2px;background:var(--line-strong)}
+
+  footer{margin-top:48px; background:#211F1B; color:#C9C2B6; padding:36px 0}
+  footer .wrap{font-size:13.5px}
+  footer h4{color:#E6BBA6; margin:0 0 10px; font-size:13px; letter-spacing:.1em; text-transform:uppercase}
+  footer a{color:#D9B6A4;border-bottom:1px solid rgba(217,182,164,.3)}
+
+  @media(max-width:680px){
+    .hero h1{font-size:26px}
+    h2{font-size:20px}
+    .toc ol{grid-template-columns:1fr}
+    .wrap{padding:0 16px}
+    .step-tag{display:none}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="kicker">Hands-on Walkthrough · 実践例</span>
+    <h1>実践ハンズオン：<span class="em">パスワードリセット</span>で<br>学ぶ統合ワークフロー</h1>
+    <p class="lead">統合エージェント開発ワークフローを、実際の開発に当てはめた具体例です。「パスワードリセット機能の追加」を題材に、各ステップで<strong>あなたが打つ指示</strong>と<strong>エージェントの動き</strong>をチャット形式で順に追います。GitHub Copilot を想定（Claude Code / Codex でも同じ）。</p>
+    <div class="meta">
+      <span><b>題材</b> パスワードリセット（Express + TypeScript）</span>
+      <span><b>形式</b> 8ステップの実演</span>
+      <span><b>対になる資料</b> 統合ワークフロー構築手順書</span>
+    </div>
+    <div class="hero-figs">
+      <span class="chip"><b>Day 1〜2</b> の流れ</span>
+      <span class="chip">grill の <b>Q&amp;A</b> 実演</span>
+      <span class="chip"><b>合言葉</b> 早見表つき</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <nav class="toc" aria-label="目次">
+    <h4>目次</h4>
+    <ol>
+      <li><a href="#about">この資料について</a></li>
+      <li><a href="#scenario">シナリオと前提</a></li>
+      <li><a href="#overview">全体像：8ステップ × この機能</a></li>
+      <li><a href="#s0">Step 0｜再開</a></li>
+      <li><a href="#s1">Step 1｜深掘り（grill-me）</a></li>
+      <li><a href="#s234">Step 2〜4｜仕様・計画・分解</a></li>
+      <li><a href="#s5">Step 5｜実装</a></li>
+      <li><a href="#s67">Step 6〜7｜記録・引き継ぎ</a></li>
+      <li><a href="#day2">Day 2｜再開と完了</a></li>
+      <li><a href="#cheat">早見表と3つの核心</a></li>
+      <li><a href="#refs">関連資料</a></li>
+    </ol>
+  </nav>
+
+<!-- ===================== 1. ABOUT ===================== -->
+<section id="about">
+  <div class="sec-head"><span class="sec-num">01</span><h2>この資料について</h2></div>
+  <p class="sec-sub">「手順書」を読んだ後の実演編。実際の1機能を、最初から最後までエージェントと進める様子を見せる。</p>
+
+  <p>別資料「統合エージェント開発ワークフロー 構築手順書」で構成と手順を示しました。本資料はその<strong>実演編</strong>です。
+  <strong>「パスワードリセット機能の追加」</strong>という現実的な1タスクを、<span class="em-ink">あなたが打つ指示</span>と
+  <span class="em-ink">エージェントの動き</span>のやり取りとして、Day 1〜Day 2 にわたって追います。</p>
+
+  <div class="callout c-info">
+    <div class="ttl">▶ 読み方</div>
+    <span style="display:inline-block;background:#23211C;color:#E6BBA6;border-radius:6px;padding:1px 9px;font-size:12px;font-weight:700">▷ あなた</span> = あなたが打つ指示／プロンプト、
+    <span style="display:inline-block;background:#F3EFF8;color:#6A5099;border:1px solid #cfc1ea;border-radius:6px;padding:1px 9px;font-size:12px;font-weight:700">エージェント</span> = その応答（簡略）、
+    <span style="display:inline-block;background:#E0EEE3;color:#234b30;border:1px solid #BFDDC7;border-radius:999px;padding:1px 10px;font-size:12px;font-weight:700">あなた: …</span> = grill への短い回答、です。
+  </div>
+</section>
+
+<!-- ===================== 2. SCENARIO ===================== -->
+<section id="scenario">
+  <div class="sec-head"><span class="sec-num">02</span><h2>シナリオと前提</h2></div>
+  <p class="sec-sub">統合キット導入済みのプロジェクトに、新しいストーリーが入ってきた、という想定。</p>
+
+  <ul style="margin:6px 0 14px;padding:0;list-style:none">
+    <li style="padding:4px 0 4px 24px;position:relative;font-size:15.5px"><span style="position:absolute;left:6px;top:13px;width:7px;height:7px;border-radius:2px;background:var(--accent);transform:rotate(45deg)"></span><strong>プロジェクト</strong>：Express + TypeScript の API（DB は Prisma + PostgreSQL）。</li>
+    <li style="padding:4px 0 4px 24px;position:relative;font-size:15.5px"><span style="position:absolute;left:6px;top:13px;width:7px;height:7px;border-radius:2px;background:var(--accent);transform:rotate(45deg)"></span><strong>導入済み</strong>：<code style="font-family:monospace;font-size:12.5px;background:var(--surface-2);border:1px solid var(--line);border-radius:5px;padding:1px 6px">AGENTS.md</code> / <code style="font-family:monospace;font-size:12.5px;background:var(--surface-2);border:1px solid var(--line);border-radius:5px;padding:1px 6px">.github/prompts/</code> / <code style="font-family:monospace;font-size:12.5px;background:var(--surface-2);border:1px solid var(--line);border-radius:5px;padding:1px 6px">memory-bank/</code> / <code style="font-family:monospace;font-size:12.5px;background:var(--surface-2);border:1px solid var(--line);border-radius:5px;padding:1px 6px">specs/</code>（統合キット）。Copilot Memory も ON。</li>
+    <li style="padding:4px 0 4px 24px;position:relative;font-size:15.5px"><span style="position:absolute;left:6px;top:13px;width:7px;height:7px;border-radius:2px;background:var(--accent);transform:rotate(45deg)"></span><strong>既存機能</strong>：ユーザー登録・ログインのみ（<code style="font-family:monospace;font-size:12.5px;background:var(--surface-2);border:1px solid var(--line);border-radius:5px;padding:1px 6px">src/auth/</code>）。メール送信基盤は未実装。</li>
+    <li style="padding:4px 0 4px 24px;position:relative;font-size:15.5px"><span style="position:absolute;left:6px;top:13px;width:7px;height:7px;border-radius:2px;background:var(--accent);transform:rotate(45deg)"></span><strong>今回のタスク</strong>：「パスワードリセット機能を追加したい」。</li>
+  </ul>
+</section>
+
+<!-- ===================== 3. OVERVIEW ===================== -->
+<section id="overview">
+  <div class="sec-head"><span class="sec-num">03</span><h2>全体像：8ステップ × この機能</h2></div>
+  <p class="sec-sub">Day 1 で仕様確定〜実装の途中まで、Day 2 で完了。色は3本柱（引き継ぎ/インタビュー/仕様駆動）を表す。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="この機能を8ステップで進める全体像">
+      <defs>
+        <marker id="ov" markerWidth="9" markerHeight="9" refX="4.5" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#9B958B"/></marker>
+      </defs>
+      <g font-family="Hiragino Sans,system-ui,sans-serif" font-size="11.5">
+        <!-- legend -->
+        <rect x="40" y="14" width="12" height="12" rx="3" fill="#DEEAF1" stroke="#C5DAE7"/><text x="58" y="24" fill="#274558">引き継ぎ</text>
+        <rect x="150" y="14" width="12" height="12" rx="3" fill="#E8E1F2" stroke="#cfc1ea"/><text x="168" y="24" fill="#4a3a72">インタビュー</text>
+        <rect x="290" y="14" width="12" height="12" rx="3" fill="#F2DBCF" stroke="#E7C3B2"/><text x="308" y="24" fill="#A84A2A">仕様駆動</text>
+
+        <!-- Day 1 label -->
+        <rect x="40" y="42" width="74" height="24" rx="12" fill="#211F1B"/><text x="77" y="58" text-anchor="middle" fill="#E6BBA6" font-weight="800" font-size="11">DAY 1</text>
+        <!-- day1 steps -->
+        <g>
+          <rect x="124" y="40" width="92" height="48" rx="9" fill="#DEEAF1" stroke="#C5DAE7"/><text x="170" y="60" text-anchor="middle" font-weight="800" fill="#23415a">0 再開</text><text x="170" y="78" text-anchor="middle" font-size="9.5" fill="#33597a">現在地確認</text>
+          <rect x="226" y="40" width="92" height="48" rx="9" fill="#E8E1F2" stroke="#cfc1ea"/><text x="272" y="60" text-anchor="middle" font-weight="800" fill="#4a3a72">1 深掘り</text><text x="272" y="78" text-anchor="middle" font-size="9.5" fill="#5a4d7a">grill</text>
+          <rect x="328" y="40" width="92" height="48" rx="9" fill="#F2DBCF" stroke="#E7C3B2"/><text x="374" y="60" text-anchor="middle" font-weight="800" fill="#A84A2A">2 仕様</text><text x="374" y="78" text-anchor="middle" font-size="9.5" fill="#8a4427">spec.md</text>
+          <rect x="430" y="40" width="92" height="48" rx="9" fill="#F2DBCF" stroke="#E7C3B2"/><text x="476" y="60" text-anchor="middle" font-weight="800" fill="#A84A2A">3 計画</text><text x="476" y="78" text-anchor="middle" font-size="9.5" fill="#8a4427">plan.md</text>
+          <rect x="532" y="40" width="92" height="48" rx="9" fill="#F2DBCF" stroke="#E7C3B2"/><text x="578" y="60" text-anchor="middle" font-weight="800" fill="#A84A2A">4 分解</text><text x="578" y="78" text-anchor="middle" font-size="9.5" fill="#8a4427">tasks.md</text>
+          <rect x="634" y="40" width="92" height="48" rx="9" fill="#F2DBCF" stroke="#E7C3B2"/><text x="680" y="60" text-anchor="middle" font-weight="800" fill="#A84A2A">5 実装</text><text x="680" y="78" text-anchor="middle" font-size="9.5" fill="#8a4427">tasks 1-4</text>
+          <rect x="736" y="40" width="84" height="48" rx="9" fill="#DEEAF1" stroke="#C5DAE7"/><text x="778" y="60" text-anchor="middle" font-weight="800" fill="#23415a">6-7</text><text x="778" y="78" text-anchor="middle" font-size="9.5" fill="#33597a">ADR・引継ぎ</text>
+        </g>
+        <path d="M216,64 L224,64" stroke="#9B958B" stroke-width="1.4" marker-end="url(#ov)"/>
+        <path d="M318,64 L326,64" stroke="#9B958B" stroke-width="1.4" marker-end="url(#ov)"/>
+        <path d="M420,64 L428,64" stroke="#9B958B" stroke-width="1.4" marker-end="url(#ov)"/>
+        <path d="M522,64 L530,64" stroke="#9B958B" stroke-width="1.4" marker-end="url(#ov)"/>
+        <path d="M624,64 L632,64" stroke="#9B958B" stroke-width="1.4" marker-end="url(#ov)"/>
+        <path d="M726,64 L734,64" stroke="#9B958B" stroke-width="1.4" marker-end="url(#ov)"/>
+
+        <!-- transition -->
+        <path d="M778,90 C778,116 170,116 170,140" fill="none" stroke="#9B958B" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#ov)"/>
+        <text x="474" y="112" text-anchor="middle" font-size="10.5" fill="#6E6960">コミットして中断 → 翌日 / 別エージェントでも同じ続きから</text>
+
+        <!-- Day 2 -->
+        <rect x="40" y="158" width="74" height="24" rx="12" fill="#211F1B"/><text x="77" y="174" text-anchor="middle" fill="#E6BBA6" font-weight="800" font-size="11">DAY 2</text>
+        <g>
+          <rect x="124" y="156" width="120" height="48" rx="9" fill="#DEEAF1" stroke="#C5DAE7"/><text x="184" y="176" text-anchor="middle" font-weight="800" fill="#23415a">0′ 再開</text><text x="184" y="194" text-anchor="middle" font-size="9.5" fill="#33597a">progress を読む</text>
+          <rect x="256" y="156" width="150" height="48" rx="9" fill="#F2DBCF" stroke="#E7C3B2"/><text x="331" y="176" text-anchor="middle" font-weight="800" fill="#A84A2A">5 実装つづき</text><text x="331" y="194" text-anchor="middle" font-size="9.5" fill="#8a4427">tasks 5-8</text>
+          <rect x="418" y="156" width="150" height="48" rx="9" fill="#E0EEE3" stroke="#BFDDC7"/><text x="493" y="176" text-anchor="middle" font-weight="800" fill="#234b30">検証</text><text x="493" y="194" text-anchor="middle" font-size="9.5" fill="#33694a">E2E（ブラウザ操作）</text>
+          <rect x="580" y="156" width="150" height="48" rx="9" fill="#DEEAF1" stroke="#C5DAE7"/><text x="655" y="176" text-anchor="middle" font-weight="800" fill="#23415a">7 引き継ぎ</text><text x="655" y="194" text-anchor="middle" font-size="9.5" fill="#33597a">完了を記録</text>
+        </g>
+        <path d="M244,180 L254,180" stroke="#9B958B" stroke-width="1.4" marker-end="url(#ov)"/>
+        <path d="M406,180 L416,180" stroke="#9B958B" stroke-width="1.4" marker-end="url(#ov)"/>
+        <path d="M568,180 L578,180" stroke="#9B958B" stroke-width="1.4" marker-end="url(#ov)"/>
+
+        <text x="430" y="232" text-anchor="middle" font-size="11" fill="#6E6960">どのストーリー/タスクでも、この同じ型（0→7）を毎回回す</text>
+      </g>
+    </svg>
+    <figcaption><b>図1</b>：<b>開始＝再開（0）／終了＝引き継ぎ（7）</b>で必ず挟む。中断しても、共有ファイル（specs・memory-bank）に状態が残るので、翌日も別エージェントでも同じ続きから始められる。</figcaption>
+  </figure>
+</section>
+
+<!-- ===================== DAY 1 BAND ===================== -->
+<div class="dayband"><span class="lbl">Day 1</span><span class="line"></span></div>
+
+<!-- ===================== 4. STEP 0 ===================== -->
+<section id="s0">
+  <div class="sec-head"><span class="sec-num">04</span><h2>Step 0｜再開</h2></div>
+  <p class="sec-sub">いきなり実装させない。まず現在地を読ませて、前提のズレを冒頭で潰す。</p>
+
+  <div class="step">
+    <div class="step-h"><span class="step-n" style="background:var(--info)">0</span><h3>現在地の確認</h3><span class="step-tag t-handoff">引き継ぎ</span></div>
+    <div class="you"><span class="who">▷ あなた</span><span class="cmd">/resume-session</span></div>
+    <div class="agent"><span class="who">エージェント</span><code style="font-family:monospace;font-size:12.5px">memory-bank/progress.md</code> と <code style="font-family:monospace;font-size:12.5px">architecture.md</code> を読みました。現在地: 登録とログインは実装済み（<code style="font-family:monospace;font-size:12.5px">src/auth/</code>）。次の候補は「パスワードリセット」。コードと照合した結果、<strong>メール送信基盤は未実装</strong>です。変更の前に確認します ― 今日は何に着手しますか?</div>
+    <div class="you"><span class="who">▷ あなた</span><span class="cmd">パスワードリセット機能を追加したい。</span></div>
+    <p class="note"><b>なぜ効くか:</b> もし即実装させていたら、エージェントは存在しないメール基盤を前提に進めて手戻りに。先に読ませることで「メール基盤が要る」と冒頭で判明します。</p>
+  </div>
+</section>
+
+<!-- ===================== 5. STEP 1 (GRILL) ===================== -->
+<section id="s1">
+  <div class="sec-head"><span class="sec-num">05</span><h2>Step 1｜深掘り（grill-me）</h2></div>
+  <p class="sec-sub">この資料の見どころ。あなたの一言から、隠れた要件をエージェントが引き出す。</p>
+
+  <div class="step">
+    <div class="step-h"><span class="step-n" style="background:var(--violet)">1</span><h3>要件を質問攻めで詰める</h3><span class="step-tag t-interview">インタビュー</span></div>
+    <div class="you"><span class="who">▷ あなた</span><span class="cmd"><b>/grill-me</b>  パスワードリセット機能の要件と設計を詰めたい</span></div>
+
+    <div class="agent q"><span class="who">エージェント（grill）</span><strong>Q1.</strong> 方式は「メールで再設定リンクを送る」想定でよいですか?（<strong>推奨: はい</strong>／有効期限つきトークンURL）</div>
+    <span class="ans">はい</span>
+    <div class="agent q"><span class="who">エージェント（grill）</span><strong>Q2.</strong>（直前を掘る）リンクの有効期限は?（<strong>推奨: 30分</strong>）</div>
+    <span class="ans">60分で</span>
+    <div class="agent q"><span class="who">エージェント（grill）</span><strong>Q3.</strong> 未登録のメールが入力されたら「登録されていません」と返しますか?（<strong>推奨: 返さない</strong> ― アカウント列挙を防ぐため一律「送信しました」と表示）</div>
+    <span class="ans">それで</span>
+    <div class="agent q"><span class="who">エージェント（grill）</span><strong>Q4.</strong> 連打対策（レート制限）は入れますか?（<strong>推奨: 同一メール/IP につき 5分で3回まで</strong>）</div>
+    <span class="ans">入れて</span>
+    <div class="agent q"><span class="who">エージェント（grill）</span><strong>Q5.</strong> 再設定の成功時に、既存のログインセッションを無効化しますか?（<strong>推奨: する</strong> ― 乗っ取り対策）</div>
+    <span class="ans">する</span>
+    <div class="agent"><span class="who">エージェント（grill）</span>実装に進める粒度になりました。合意点: ①メールリンク方式 ②期限60分・1回使用 ③列挙対策で一律応答 ④レート制限3回/5分 ⑤成功時に全セッション無効化。これを <code style="font-family:monospace;font-size:12.5px">specs/0002-password-reset/spec.md</code> の下書きにします。</div>
+  </div>
+
+  <figure>
+    <svg viewBox="0 0 860 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="一言の要望からgrillが隠れた要件を引き出す">
+      <defs>
+        <marker id="gr" markerWidth="9" markerHeight="9" refX="4.5" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#6A5099"/></marker>
+      </defs>
+      <g font-family="Hiragino Sans,system-ui,sans-serif">
+        <!-- input -->
+        <rect x="30" y="84" width="200" height="52" rx="11" fill="#23211C"/>
+        <text x="130" y="108" text-anchor="middle" font-size="12.5" font-weight="700" fill="#EFE8DC">「パスワードリセットを</text>
+        <text x="130" y="126" text-anchor="middle" font-size="12.5" font-weight="700" fill="#EFE8DC">追加したい」</text>
+        <text x="130" y="74" text-anchor="middle" font-size="10.5" fill="#9B958B">あなたの一言</text>
+        <!-- grill -->
+        <circle cx="320" cy="110" r="34" fill="#E8E1F2" stroke="#cfc1ea"/>
+        <text x="320" y="106" text-anchor="middle" font-size="12.5" font-weight="800" fill="#4a3a72">grill</text>
+        <text x="320" y="122" text-anchor="middle" font-size="9.5" fill="#5a4d7a">深掘り</text>
+        <path d="M230,110 L283,110" stroke="#6A5099" stroke-width="2" marker-end="url(#gr)"/>
+        <!-- surfaced -->
+        <g font-size="11.5" fill="#5e2a17">
+          <rect x="420" y="20" width="410" height="32" rx="8" fill="#F2DBCF" stroke="#E7C3B2"/><text x="436" y="40">① トークンの有効期限（60分・1回使用）</text>
+          <rect x="420" y="58" width="410" height="32" rx="8" fill="#F2DBCF" stroke="#E7C3B2"/><text x="436" y="78">② アカウント列挙対策（一律「送信しました」）</text>
+          <rect x="420" y="96" width="410" height="32" rx="8" fill="#F2DBCF" stroke="#E7C3B2"/><text x="436" y="116">③ レート制限（3回/5分）</text>
+          <rect x="420" y="134" width="410" height="32" rx="8" fill="#F2DBCF" stroke="#E7C3B2"/><text x="436" y="154">④ 成功時のセッション無効化</text>
+          <rect x="420" y="172" width="410" height="32" rx="8" fill="#E0EEE3" stroke="#BFDDC7"/><text x="436" y="192" fill="#234b30">⑤ メール送信基盤が必要（Step 0 で判明）</text>
+        </g>
+        <path d="M354,96 L418,40" stroke="#6A5099" stroke-width="1.3" marker-end="url(#gr)"/>
+        <path d="M356,104 L418,74" stroke="#6A5099" stroke-width="1.3" marker-end="url(#gr)"/>
+        <path d="M356,116 L418,112" stroke="#6A5099" stroke-width="1.3" marker-end="url(#gr)"/>
+        <path d="M356,124 L418,150" stroke="#6A5099" stroke-width="1.3" marker-end="url(#gr)"/>
+        <path d="M354,128 L418,186" stroke="#6A5099" stroke-width="1.3" marker-end="url(#gr)"/>
+      </g>
+    </svg>
+    <figcaption><b>図2</b>：grill の真価は「<b>あなたが言語化していなかった要件</b>」を引き出すこと。列挙対策やセッション無効化は、ここで詰めないと実装の深部で手戻りになりがち。</figcaption>
+  </figure>
+</section>
+
+<!-- ===================== 6. STEPS 2-4 ===================== -->
+<section id="s234">
+  <div class="sec-head"><span class="sec-num">06</span><h2>Step 2〜4｜仕様・計画・分解</h2></div>
+  <p class="sec-sub">固めた意図を、spec → plan → tasks へ段階的に降ろす。各段でレビューして締める。</p>
+
+  <div class="step">
+    <div class="step-h"><span class="step-n">2</span><h3>仕様の確定（specify）</h3><span class="step-tag t-spec">仕様駆動</span></div>
+    <div class="you"><span class="who">▷ あなた</span><span class="cmd"><b>/speckit.specify</b>  さっきの合意内容で spec を確定して</span></div>
+    <div class="agent"><span class="who">エージェント</span><code style="font-family:monospace;font-size:12.5px">specs/0002-password-reset/spec.md</code> を作成しました（何を・なぜ・受け入れ条件・スコープ外・E2E検証）。技術スタックはまだ書いていません。</div>
+    <div class="you"><span class="who">▷ あなた</span><span class="cmd">受け入れ条件に「再設定完了を本人にメール通知する」を追加して。</span></div>
+    <p class="fileout"><b>生成:</b> <code>specs/0002-password-reset/spec.md</code></p>
+  </div>
+
+  <div class="step">
+    <div class="step-h"><span class="step-n">3</span><h3>計画（plan）― 自分のスタックに合わせる</h3><span class="step-tag t-spec">仕様駆動</span></div>
+    <div class="you"><span class="who">▷ あなた</span><span class="cmd"><b>/speckit.plan</b>  スタックは Express + TypeScript + Prisma + PostgreSQL、
+メールは Amazon SES。既存の src/auth/ のパターンに合わせて。</span></div>
+    <div class="agent"><span class="who">エージェント</span><code style="font-family:monospace;font-size:12.5px">plan.md</code> を作成: エンドポイント2本（要求 / 再設定）、<strong>トークンはハッシュ化してDB保存</strong>、<code style="font-family:monospace;font-size:12.5px">password_reset_tokens</code> テーブル、レート制限ミドルウェア、SES送信、期限切れ掃除。</div>
+    <div class="you"><span class="who">▷ あなた</span><span class="cmd">この plan を grill して。特にセキュリティとエッジケースを突いて。</span></div>
+    <div class="agent q"><span class="who">エージェント（grill）</span>トークンはDB保存前にハッシュ化しますか?（推奨: する）／ 期限切れトークンの掃除はどう実装しますか?（推奨: 検証時に失効判定＋日次バッチ）…</div>
+    <p class="note"><b>コツ:</b> <strong>計画そのものも grill にかける</strong>と、実装前に弱点が締まります。「仕様の grill」と「計画の grill」は別物。</p>
+    <p class="fileout"><b>生成:</b> <code>specs/0002-password-reset/plan.md</code></p>
+  </div>
+
+  <div class="step">
+    <div class="step-h"><span class="step-n">4</span><h3>タスク分解（tasks）</h3><span class="step-tag t-spec">仕様駆動</span></div>
+    <div class="you"><span class="who">▷ あなた</span><span class="cmd">/speckit.tasks</span></div>
+    <div class="agent"><span class="who">エージェント</span><code style="font-family:monospace;font-size:12.5px">tasks.md</code> を作成（各タスクは単独で検証可能）:<br>
+    1. マイグレーション（tokensテーブル）／2. トークン生成＋ハッシュ保存／3. リセット要求エンドポイント／4. レート制限ミドルウェア／5. 検証＋再設定エンドポイント／6. 成功時セッション無効化／7. SESメール送信／8. E2Eテスト</div>
+    <p class="fileout"><b>生成:</b> <code>specs/0002-password-reset/tasks.md</code></p>
+  </div>
+</section>
+
+<!-- ===================== 7. STEP 5 ===================== -->
+<section id="s5">
+  <div class="sec-head"><span class="sec-num">07</span><h2>Step 5｜実装</h2></div>
+  <p class="sec-sub">「全部やって」ではなく、1タスクずつ＋検証＋差分確認。事故を防ぐ進め方。</p>
+
+  <div class="step">
+    <div class="step-h"><span class="step-n">5</span><h3>1タスクずつ実装し、検証で締める</h3><span class="step-tag t-spec">仕様駆動</span></div>
+    <div class="you"><span class="who">▷ あなた</span><span class="cmd">tasks.md の 1番から順に実装して。各タスクごとにテストを書いて
+npm test を通してから次へ。1タスク終わるたびに止めて差分を見せて。</span></div>
+    <div class="agent"><span class="who">エージェント</span>タスク1（マイグレーション）を実装 → テスト作成 → <code style="font-family:monospace;font-size:12.5px">npm test</code> 緑 → 差分を提示。承認後タスク2へ進みます。</div>
+
+    <div class="you"><span class="who">▷ あなた（軌道修正）</span><span class="cmd">トークンはメールには平文で載せ、DBにはハッシュだけ保存して。
+平文はDBに残さないで。</span></div>
+    <div class="agent"><span class="who">エージェント</span>了解しました。タスク2を修正: 生成した平文トークンはメール本文にのみ使用し、DBには SHA-256 ハッシュを保存します。検証時は入力トークンをハッシュ化して照合します。</div>
+    <p class="note"><b>進め方の要:</b> 気づいた時点で<strong>その場で短く指示</strong>すればよい（長いプロンプトを練り直さない）。今日はタスク4まで進んで時間切れ、とします。</p>
+  </div>
+</section>
+
+<!-- ===================== 8. STEPS 6-7 ===================== -->
+<section id="s67">
+  <div class="sec-head"><span class="sec-num">08</span><h2>Step 6〜7｜記録・引き継ぎ</h2></div>
+  <p class="sec-sub">重要な判断はその場でADR化。中断前に必ず progress を更新してコミット。</p>
+
+  <div class="step">
+    <div class="step-h"><span class="step-n" style="background:var(--info)">6</span><h3>決定を ADR に残す</h3><span class="step-tag t-handoff">引き継ぎ</span></div>
+    <div class="you"><span class="who">▷ あなた</span><span class="cmd">「リセットトークンはハッシュ化してDB保存、平文はメールのみ」と決めた。
+これをADRに残して。</span></div>
+    <div class="agent"><span class="who">エージェント</span><code style="font-family:monospace;font-size:12.5px">memory-bank/decisions/0003-hash-reset-tokens.md</code> を追記しました（背景・決定・結果）。</div>
+    <p class="note"><b>なぜ効くか:</b> 次回や別エージェントが「なぜハッシュ保存?」を蒸し返さない。決定の経緯が監査可能に。</p>
+    <p class="fileout"><b>生成:</b> <code>memory-bank/decisions/0003-hash-reset-tokens.md</code></p>
+  </div>
+
+  <div class="step">
+    <div class="step-h"><span class="step-n" style="background:var(--info)">7</span><h3>中断前に引き継ぎを書き戻す</h3><span class="step-tag t-handoff">引き継ぎ</span></div>
+    <div class="you"><span class="who">▷ あなた</span><span class="cmd">/update-handoff</span></div>
+    <div class="agent"><span class="who">エージェント</span><code style="font-family:monospace;font-size:12.5px">progress.md</code> を更新し、差分を提示します:<br>
+    ・現在の状態: タスク1〜4完了（マイグレーション・トークン生成・要求EP・レート制限）<br>
+    ・次の一手: タスク5（検証＋再設定エンドポイント）から<br>
+    ・最近の変更: 2026-06-07 / done: tasks 1-4 / files: src/auth/reset*, prisma/… / next: task 5</div>
+    <div class="you"><span class="who">▷ あなた</span><span class="cmd">git add -A && git commit -m "feat(auth): password reset (tasks 1-4)"</span></div>
+    <p class="fileout"><b>更新:</b> <code>memory-bank/progress.md</code> ＋ コミット</p>
+  </div>
+</section>
+
+<!-- ===================== DAY 2 BAND ===================== -->
+<div class="dayband"><span class="lbl">Day 2</span><span class="line"></span></div>
+
+<!-- ===================== 9. DAY 2 ===================== -->
+<section id="day2">
+  <div class="sec-head"><span class="sec-num">09</span><h2>Day 2｜再開と完了</h2></div>
+  <p class="sec-sub">翌日。文脈を再説明せずに続きから。しかも別エージェントでも同じ。</p>
+
+  <div class="step">
+    <div class="step-h"><span class="step-n" style="background:var(--info)">0′</span><h3>再開 ― 続きから始まる</h3><span class="step-tag t-handoff">引き継ぎ</span></div>
+    <div class="you"><span class="who">▷ あなた</span><span class="cmd">/resume-session</span></div>
+    <div class="agent"><span class="who">エージェント</span><code style="font-family:monospace;font-size:12.5px">progress.md</code> を読みました。前回はタスク4まで完了。次は<strong>タスク5（検証＋再設定エンドポイント）</strong>。コードと照合済み、ズレなし。続けますか?</div>
+    <div class="you"><span class="who">▷ あなた</span><span class="cmd">続けて。tasks.md の5番から、同じく1タスクずつ検証しながら。</span></div>
+    <div class="agent"><span class="who">エージェント</span>タスク5〜8を順に実装 → 各々テスト緑 → 最後に spec の「E2E検証」に従い、ブラウザ操作で「忘れた→メール→リンク→新パスワード→ログイン成功」を一気通貫で確認しました。</div>
+    <div class="you"><span class="who">▷ あなた</span><span class="cmd">/update-handoff</span></div>
+    <div class="agent"><span class="who">エージェント</span><code style="font-family:monospace;font-size:12.5px">progress.md</code> 更新: パスワードリセット完了（tasks 1-8）。次の候補: …。差分を提示します。</div>
+  </div>
+
+  <figure>
+    <svg viewBox="0 0 860 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="共有ファイルで翌日・別エージェントへ引き継ぐ">
+      <defs>
+        <marker id="d2" markerWidth="9" markerHeight="9" refX="4.5" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#6E6960"/></marker>
+      </defs>
+      <g font-family="Hiragino Sans,system-ui,sans-serif">
+        <!-- day1 -->
+        <rect x="30" y="76" width="180" height="50" rx="11" fill="#DEEAF1" stroke="#C5DAE7"/>
+        <text x="120" y="98" text-anchor="middle" font-size="12.5" font-weight="800" fill="#23415a">Day 1 ・ Copilot</text>
+        <text x="120" y="116" text-anchor="middle" font-size="10" fill="#33597a">tasks 1-4 ＋ 引き継ぎを書く</text>
+        <!-- shared -->
+        <rect x="300" y="66" width="260" height="70" rx="12" fill="#FBF8F3" stroke="#C15F3C" stroke-width="1.5"/>
+        <text x="430" y="92" text-anchor="middle" font-size="12.5" font-weight="800" fill="#A84A2A">共有ファイル</text>
+        <text x="430" y="110" text-anchor="middle" font-size="10.5" fill="#8a4427" font-family="monospace">specs/ ＋ memory-bank/</text>
+        <text x="430" y="126" text-anchor="middle" font-size="9.5" fill="#8a4427">（git に永続）</text>
+        <!-- day2 options -->
+        <rect x="650" y="30" width="180" height="38" rx="9" fill="#DEEAF1" stroke="#C5DAE7"/><text x="740" y="54" text-anchor="middle" font-size="11.5" font-weight="700" fill="#23415a">Day 2 ・ Copilot</text>
+        <rect x="650" y="80" width="180" height="38" rx="9" fill="#F2DBCF" stroke="#E7C3B2"/><text x="740" y="104" text-anchor="middle" font-size="11.5" font-weight="700" fill="#A84A2A">または Claude Code</text>
+        <rect x="650" y="130" width="180" height="38" rx="9" fill="#E0EEE3" stroke="#BFDDC7"/><text x="740" y="154" text-anchor="middle" font-size="11.5" font-weight="700" fill="#234b30">または Codex</text>
+
+        <path d="M210,101 L298,101" stroke="#6E6960" stroke-width="1.6" marker-end="url(#d2)"/>
+        <text x="254" y="94" text-anchor="middle" font-size="9.5" fill="#6E6960">書く</text>
+        <path d="M560,90 L648,49" stroke="#6E6960" stroke-width="1.4" marker-end="url(#d2)"/>
+        <path d="M560,101 L648,99" stroke="#6E6960" stroke-width="1.4" marker-end="url(#d2)"/>
+        <path d="M560,112 L648,149" stroke="#6E6960" stroke-width="1.4" marker-end="url(#d2)"/>
+        <text x="600" y="80" text-anchor="middle" font-size="9.5" fill="#6E6960">読む</text>
+      </g>
+    </svg>
+    <figcaption><b>図3</b>：状態は共有ファイルにあるので、<b>翌日でも、別のエージェントでも</b>、<code>/resume-session</code> で同じ続きから始まる。これが「背骨＝AGENTS.md、記憶＝共有ファイル」の効果。</figcaption>
+  </figure>
+
+  <div class="callout c-good">
+    <div class="ttl">✔ 文脈の再説明はゼロ</div>
+    あなたは「どこまでやったか」を一切説明していません。<code>/resume-session</code> がファイルから復元するからです。Copilot で詰めた仕様を Claude Code が実装、決定を Codex も読む ― <strong>同じ共有コアを読むので横断が成立</strong>します。
+  </div>
+</section>
+
+<!-- ===================== 10. CHEAT ===================== -->
+<section id="cheat">
+  <div class="sec-head"><span class="sec-num">10</span><h2>早見表と3つの核心</h2></div>
+  <p class="sec-sub">局面ごとに打つ“合言葉”はこれだけ。覚えるのは3つの原則。</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>局面</th><th>打つ指示</th></tr></thead>
+      <tbody>
+        <tr><td class="k">開始時</td><td><code>/resume-session</code></td></tr>
+        <tr><td class="k">要件が曖昧</td><td><code>/grill-me &lt;やりたいこと&gt;</code></td></tr>
+        <tr><td class="k">計画を固めたい</td><td><code>/speckit.plan &lt;スタック・制約&gt;</code> → 「この plan を grill して」</td></tr>
+        <tr><td class="k">実装</td><td>「tasks の N番から、1つずつテストを通して、終わるごとに差分を見せて」</td></tr>
+        <tr><td class="k">決定が出た</td><td>「この決定を ADR に残して」</td></tr>
+        <tr><td class="k">中断・終了時</td><td><code>/update-handoff</code> → commit</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout c-key">
+    <div class="ttl">◆ 覚えるのは3つだけ</div>
+    <strong>① 開始＝<code>/resume-session</code>、終了＝<code>/update-handoff</code> を必ず挟む。
+    ② 曖昧なら実装前に <code>/grill-me</code>。
+    ③ 実装は1タスクずつ＋検証＋差分確認。</strong>
+    これさえ守れば、どのプロジェクト・どのタスク・どのエージェントでも同じ型で進められます。
+  </div>
+</section>
+
+<!-- ===================== 11. REFS ===================== -->
+<section id="refs">
+  <div class="sec-head"><span class="sec-num">11</span><h2>関連資料</h2></div>
+  <p class="sec-sub">この実演の背景となる、シリーズの他資料。</p>
+  <ul style="margin:6px 0 14px;padding:0;list-style:none">
+    <li style="padding:5px 0 5px 24px;position:relative;font-size:15.5px"><span style="position:absolute;left:6px;top:14px;width:7px;height:7px;border-radius:2px;background:var(--accent);transform:rotate(45deg)"></span><a href="unified-workflow-guide.html">統合エージェント開発ワークフロー 構築手順書</a> ― 本資料の対になる「構成と手順」編（共有コア＋アダプタ、エージェント別導入）。</li>
+    <li style="padding:5px 0 5px 24px;position:relative;font-size:15.5px"><span style="position:absolute;left:6px;top:14px;width:7px;height:7px;border-radius:2px;background:var(--accent);transform:rotate(45deg)"></span><a href="github-spec-kit-guide.html">GitHub Spec Kit 詳解</a> ― specify / plan / tasks / implement の詳細。</li>
+    <li style="padding:5px 0 5px 24px;position:relative;font-size:15.5px"><span style="position:absolute;left:6px;top:14px;width:7px;height:7px;border-radius:2px;background:var(--accent);transform:rotate(45deg)"></span><a href="session-handoff-guide.html">セッション間引き継ぎ 詳解</a> ― ADR・memory-bank・各ネイティブ記憶。</li>
+    <li style="padding:5px 0 5px 24px;position:relative;font-size:15.5px"><span style="position:absolute;left:6px;top:14px;width:7px;height:7px;border-radius:2px;background:var(--accent);transform:rotate(45deg)"></span>構築キット <code style="font-family:monospace;font-size:12.5px;background:var(--surface-2);border:1px solid var(--line);border-radius:5px;padding:1px 6px">spec-driven-handoff-kit/</code> ― この実演で使う実ファイル一式（手順は <code style="font-family:monospace;font-size:12.5px;background:var(--surface-2);border:1px solid var(--line);border-radius:5px;padding:1px 6px">SETUP.md</code>）。</li>
+  </ul>
+  <p class="src">※ プロンプト・コマンド名は GitHub Copilot（agent mode）の例です。Claude Code / Codex では同等のスキル/コマンドで読み替えてください（対応は構築手順書を参照）。</p>
+</section>
+
+<p style="text-align:center; color:var(--faint); font-size:13px; margin:40px 0 10px">― 以上 ―</p>
+
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <h4>このドキュメントについて</h4>
+    <p style="color:#C9C2B6">「統合エージェント開発ワークフロー 構築手順書」の実践編。プロンプトは GitHub Copilot（agent mode）を想定していますが、Claude Code / OpenAI Codex でも同じ流れ・同じ共有ファイルで進められます。エージェントの応答例は説明用に簡略化しています。</p>
+    <p style="color:#9B958B;font-size:12.5px">← <a href="index.html">ナレッジベース（ハブ）に戻る</a></p>
+  </div>
+</footer>
+
+</body>
+</html>

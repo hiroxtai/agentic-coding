@@ -1,7 +1,7 @@
 # Agentic Coding ナレッジベース（2026年6月）
 
 LLM・AIエージェントを活用したコーディング開発手法の調査資料集です（図解付き・外部依存なしの
-静的 HTML 5本 ＋ 構築キット2式）。`index.html` がハブページで、各資料への入口になっています。
+静的 HTML 6本 ＋ 構築キット2式）。`index.html` がハブページで、各資料への入口になっています。
 
 🔗 **公開URL（Pages 有効化後）:** `https://hiroxtai.github.io/agentic-coding/`
 
@@ -59,6 +59,7 @@ git push
 | `session-handoff-guide.html` | ③ セッション間引き継ぎ 詳解（汎用） |
 | `github-copilot-handoff-guide.html` | ④ GitHub Copilot 引き継ぎ 詳解 |
 | `unified-workflow-guide.html` | ⑤ 統合ワークフロー構築手順書（集大成） |
+| `hands-on-walkthrough-guide.html` | ⑥ 実践ハンズオン（パスワードリセットの実演） |
 | `spec-driven-handoff-kit/` | 統合構成の実ファイル一式（Copilot / Claude / Codex 横断）。手順は `SETUP.md` |
 | `copilot-handoff-starter/` | Copilot 向け引き継ぎスターターキット。手順は `SETUP.md` |
 | `.nojekyll` / `.gitignore` / `README.md` | Pages 設定 ／ 除外 ／ このファイル |
