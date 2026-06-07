@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GitHub Spec Kit 詳解 ― 仕様駆動開発ツールキット</title>
+<style>
+  :root{
+    --bg:#F4EFE7; --surface:#FFFFFF; --surface-2:#FBF8F3;
+    --ink:#1C1B18; --muted:#6E6960; --faint:#9B958B;
+    --accent:#C15F3C; --accent-deep:#A84A2A; --accent-soft:#F2DBCF;
+    --line:#E5DDD1; --line-strong:#D6CCBD;
+    --good:#3F7D54; --good-soft:#E0EEE3;
+    --warn:#B8860B; --warn-soft:#F6ECCF;
+    --info:#3A6B8C; --info-soft:#DEEAF1;
+    --violet:#6A5099; --violet-soft:#E8E1F2;
+    --shadow:0 1px 2px rgba(40,30,20,.04),0 8px 24px rgba(40,30,20,.06);
+    --radius:16px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    line-height:1.85; font-size:16.5px; letter-spacing:.01em;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:980px; margin:0 auto; padding:0 22px}
+  h1,h2,h3,h4{line-height:1.4; letter-spacing:.005em}
+
+  .hero{
+    background:
+      radial-gradient(120% 140% at 85% -10%, rgba(193,95,60,.18), transparent 55%),
+      radial-gradient(110% 130% at -10% 0%, rgba(58,107,140,.12), transparent 50%),
+      linear-gradient(180deg,#211F1B 0%, #2C2823 100%);
+    color:#F4EFE7; padding:60px 0 52px; position:relative; overflow:hidden;
+  }
+  .hero .wrap{position:relative; z-index:2}
+  .kicker{
+    display:inline-block; font-size:12.5px; letter-spacing:.18em; text-transform:uppercase;
+    color:#E6BBA6; border:1px solid rgba(230,187,166,.4); padding:5px 12px; border-radius:999px; margin-bottom:22px;
+  }
+  .hero h1{font-size:36px; margin:0 0 16px; font-weight:800; letter-spacing:0}
+  .hero h1 .em{color:#E89B79}
+  .hero p.lead{font-size:17px; color:#D9D2C7; max-width:760px; margin:0 0 24px}
+  .hero .meta{display:flex; flex-wrap:wrap; gap:10px 22px; font-size:13.5px; color:#B9B2A6}
+  .hero .meta b{color:#E6BBA6; font-weight:600}
+  .hero-figs{display:flex; flex-wrap:wrap; gap:10px; margin-top:28px}
+  .chip{background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); padding:7px 14px; border-radius:999px; font-size:13px; color:#EFE8DC}
+  .chip b{color:#E89B79; font-weight:700}
+
+  section{padding:44px 0 8px}
+  .sec-head{display:flex; align-items:baseline; gap:14px; margin-bottom:8px}
+  .sec-num{font-size:13px; font-weight:800; color:var(--accent); letter-spacing:.1em; border:1.5px solid var(--accent-soft); background:var(--surface); border-radius:8px; padding:3px 9px; white-space:nowrap}
+  h2{font-size:25px; margin:0; font-weight:800}
+  .sec-sub{color:var(--muted); font-size:15.5px; margin:6px 0 22px}
+  h3{font-size:18.5px; margin:28px 0 10px; font-weight:700}
+  p{margin:0 0 16px}
+  a{color:var(--accent-deep); text-decoration:none; border-bottom:1px solid var(--accent-soft)}
+  a:hover{border-bottom-color:var(--accent)}
+  strong{font-weight:700}
+  .em-ink{color:var(--accent-deep); font-weight:700}
+
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:22px 26px; box-shadow:var(--shadow); margin:20px 0}
+  .callout{border-radius:14px; padding:16px 20px; margin:20px 0; font-size:15.5px; border:1px solid}
+  .callout .ttl{font-weight:800; font-size:14px; letter-spacing:.04em; margin-bottom:6px; display:flex; align-items:center; gap:8px}
+  .c-key{background:var(--accent-soft); border-color:#E7C3B2; color:#5e2a17}
+  .c-key .ttl{color:var(--accent-deep)}
+  .c-info{background:var(--info-soft); border-color:#C5DAE7; color:#274558}
+  .c-info .ttl{color:var(--info)}
+  .c-good{background:var(--good-soft); border-color:#BFDDC7; color:#234b30}
+  .c-good .ttl{color:var(--good)}
+  .c-warn{background:var(--warn-soft); border-color:#E8D49A; color:#5c4708}
+  .c-warn .ttl{color:#8a6608}
+  .c-violet{background:var(--violet-soft); border-color:#cfc1ea; color:#3f3266}
+  .c-violet .ttl{color:var(--violet)}
+
+  .toc{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:22px 26px; box-shadow:var(--shadow); margin:30px 0 6px}
+  .toc h4{margin:0 0 14px; font-size:13px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted)}
+  .toc ol{margin:0; padding:0; list-style:none; counter-reset:t; display:grid; grid-template-columns:1fr 1fr; gap:6px 28px}
+  .toc li{counter-increment:t; font-size:15px; padding:5px 0; border-bottom:1px dashed var(--line)}
+  .toc li a{border:0; color:var(--ink); display:flex; gap:10px; align-items:baseline}
+  .toc li a:hover{color:var(--accent-deep)}
+  .toc li a::before{content:counter(t,decimal-leading-zero); color:var(--accent); font-weight:800; font-size:12.5px; min-width:22px}
+
+  .tbl-wrap{overflow-x:auto; margin:20px 0; border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow)}
+  table{border-collapse:collapse; width:100%; font-size:14.5px; background:var(--surface)}
+  th,td{text-align:left; padding:12px 16px; border-bottom:1px solid var(--line); vertical-align:top}
+  thead th{background:var(--surface-2); font-weight:700; color:var(--ink); font-size:13.5px; border-bottom:2px solid var(--line-strong)}
+  tbody tr:last-child td{border-bottom:0}
+  tbody tr:hover{background:var(--surface-2)}
+  td.method{font-weight:700; color:var(--accent-deep); white-space:nowrap}
+  code{background:var(--surface-2); border:1px solid var(--line); border-radius:6px; padding:1.5px 6px; font-family:"SF Mono",Menlo,Consolas,monospace; font-size:13.5px; color:var(--accent-deep)}
+  pre{background:#211F1B; color:#EFE8DC; border-radius:12px; padding:16px 18px; overflow-x:auto; font-family:"SF Mono",Menlo,Consolas,monospace; font-size:13.5px; line-height:1.7; margin:16px 0}
+  pre code{background:none; border:0; color:#EFE8DC; padding:0}
+  pre .c{color:#9B958B}
+  pre .k{color:#E89B79}
+
+  figure{margin:24px 0; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:22px 20px 14px; box-shadow:var(--shadow)}
+  figure svg{display:block; width:100%; height:auto}
+  figcaption{font-size:13px; color:var(--muted); text-align:center; margin-top:12px; padding-top:10px; border-top:1px dashed var(--line)}
+  figcaption b{color:var(--accent-deep)}
+
+  ul.clean{margin:6px 0 18px; padding:0; list-style:none}
+  ul.clean li{position:relative; padding:4px 0 4px 26px; font-size:15.5px}
+  ul.clean li::before{content:""; position:absolute; left:6px; top:14px; width:7px; height:7px; border-radius:2px; background:var(--accent); transform:rotate(45deg)}
+
+  .src{font-size:13px; color:var(--muted)}
+  footer{margin-top:48px; background:#211F1B; color:#C9C2B6; padding:38px 0}
+  footer .wrap{font-size:14px}
+  footer h4{color:#E6BBA6; margin:0 0 10px; font-size:13px; letter-spacing:.1em; text-transform:uppercase}
+  footer a{color:#D9B6A4; border-bottom:1px solid rgba(217,182,164,.3)}
+
+  @media(max-width:680px){
+    .hero h1{font-size:28px}
+    h2{font-size:21px}
+    .toc ol{grid-template-columns:1fr}
+    .wrap{padding:0 16px}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="kicker">Spec-Driven Development · Deep Dive</span>
+    <h1>GitHub <span class="em">Spec Kit</span> 詳解</h1>
+    <p class="lead">「コードではなく仕様を真実の源にする」― GitHub がオープンソースで公開した仕様駆動開発（SDD）ツールキットの全体像を、公式情報をもとに図解で解説します。前回の「コーディングエージェント開発手法ガイド」05章の具体実装にあたる資料です。</p>
+    <div class="meta">
+      <span><b>提供</b> GitHub（OSS）</span>
+      <span><b>初公開</b> 2025年9月</span>
+      <span><b>位置づけ</b> 実験的プロジェクト（0.x系）</span>
+    </div>
+    <div class="hero-figs">
+      <span class="chip"><b>1</b> つの憲法（Constitution）</span>
+      <span class="chip"><b>4</b> フェーズのワークフロー</span>
+      <span class="chip"><b>多数</b> のエージェントに対応</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <nav class="toc" aria-label="目次">
+    <h4>目次</h4>
+    <ol>
+      <li><a href="#what">Spec Kit とは</a></li>
+      <li><a href="#why">なぜ生まれたか（vibe-coding問題）</a></li>
+      <li><a href="#inversion">中核思想：意図が真実の源</a></li>
+      <li><a href="#flow">仕組み：憲法＋4フェーズ</a></li>
+      <li><a href="#role">人間の役割：steer と verify</a></li>
+      <li><a href="#cli">導入とコマンド</a></li>
+      <li><a href="#agents">対応エージェント</a></li>
+      <li><a href="#works">なぜ効くのか</a></li>
+      <li><a href="#cases">特に効く3つの場面</a></li>
+      <li><a href="#notes">位置づけ・注意点・将来</a></li>
+      <li><a href="#refs">出典</a></li>
+    </ol>
+  </nav>
+
+<!-- ===================== 1. WHAT ===================== -->
+<section id="what">
+  <div class="sec-head"><span class="sec-num">01</span><h2>Spec Kit とは</h2></div>
+  <p class="sec-sub">テンプレート・CLI・プロンプトを束ね、コーディングエージェントに「仕様駆動開発」を持ち込む公式OSSツールキット。</p>
+
+  <p><strong>Spec Kit</strong> は、GitHub が2025年9月にオープンソースとして公開した、<span class="em-ink">仕様駆動開発（Spec-Driven Development, SDD）</span>を実践するためのツールキットです。テンプレート・CLI（<code>specify</code>）・一連のプロンプトをパッケージ化し、「コードではなく<strong>仕様を真実の源（source of truth）</strong>にする」開発スタイルを、お使いのコーディングエージェントの上で実現します。</p>
+
+  <p>作者は GitHub の Principal Product Manager, Den Delimarsky 氏。GitHub 自身が「これは<strong>実験（experiment）</strong>であり、本質は特定のツールではなく<strong>プロセスそのものにある</strong>」と位置づけ、だからこそOSS化しています。2026年時点でも 0.x 系として活発に開発が続いています。</p>
+
+  <div class="callout c-violet">
+    <div class="ttl">◆ 前回資料との関係</div>
+    これは「コーディングエージェント開発手法ガイド」<strong>05章 仕様駆動開発</strong>の GitHub 版の具体実装です。後述の「憲法（Constitution）」は、同ガイド<strong>07章の CLAUDE.md / AGENTS.md による永続コンテキスト</strong>と同じ発想で理解できます。
+  </div>
+</section>
+
+<!-- ===================== 2. WHY ===================== -->
+<section id="why">
+  <div class="sec-head"><span class="sec-num">02</span><h2>なぜ生まれたか（vibe-coding問題）</h2></div>
+  <p class="sec-sub">「それらしいが動かない」コード。原因はエージェントの能力ではなく、こちらの接し方にあった。</p>
+
+  <p>コーディングエージェントが強力になるにつれ、あるパターンが目立つようになりました ―「目標を伝える → コードの塊が返る → でも<strong>よく見ると動かない、あるいは意図を外している</strong>」。コンパイルが通らない、問題の一部しか解けていない、選ぶはずのないスタックになっている…。GitHub はこれを<strong>エージェントの能力の問題ではなく、こちらの「接し方」の問題</strong>だと整理します。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="vibe-coding と spec-driven の対比">
+      <g font-family="Hiragino Sans,system-ui,sans-serif">
+        <!-- left: vibe coding -->
+        <rect x="20" y="30" width="395" height="195" rx="13" fill="#F2DBCF" stroke="#E7C3B2"/>
+        <text x="217" y="58" text-anchor="middle" font-size="15" font-weight="800" fill="#A84A2A">従来の「vibe-coding」</text>
+        <text x="217" y="78" text-anchor="middle" font-size="12" fill="#8a4427">エージェント＝検索エンジン扱い</text>
+        <rect x="44" y="96" width="150" height="34" rx="8" fill="#fff" stroke="#E7C3B2"/>
+        <text x="119" y="118" text-anchor="middle" font-size="12.5" fill="#1C1B18">曖昧な一言の指示</text>
+        <text x="210" y="118" font-size="16" fill="#A84A2A">→</text>
+        <rect x="240" y="96" width="150" height="34" rx="8" fill="#fff" stroke="#E7C3B2"/>
+        <text x="315" y="118" text-anchor="middle" font-size="12.5" fill="#1C1B18">コードの塊が出力</text>
+        <text x="119" y="152" text-anchor="middle" font-size="22" fill="#A84A2A">⌄</text>
+        <rect x="44" y="160" width="346" height="48" rx="8" fill="#FBE4DA" stroke="#E7C3B2"/>
+        <text x="217" y="180" text-anchor="middle" font-size="12.5" font-weight="700" fill="#A84A2A">数千の暗黙要件をAIが「推測」</text>
+        <text x="217" y="198" text-anchor="middle" font-size="11.5" fill="#8a4427">一部は外れ、実装の深部まで気づけない</text>
+
+        <!-- right: spec-driven -->
+        <rect x="445" y="30" width="395" height="195" rx="13" fill="#E0EEE3" stroke="#BFDDC7"/>
+        <text x="642" y="58" text-anchor="middle" font-size="15" font-weight="800" fill="#234b30">Spec Kit の仕様駆動</text>
+        <text x="642" y="78" text-anchor="middle" font-size="12" fill="#33694a">エージェント＝文字通りのペアプログラマー</text>
+        <rect x="469" y="96" width="150" height="34" rx="8" fill="#fff" stroke="#BFDDC7"/>
+        <text x="544" y="118" text-anchor="middle" font-size="12.5" fill="#1C1B18">仕様・計画・タスク</text>
+        <text x="635" y="118" font-size="16" fill="#3F7D54">→</text>
+        <rect x="665" y="96" width="150" height="34" rx="8" fill="#fff" stroke="#BFDDC7"/>
+        <text x="740" y="118" text-anchor="middle" font-size="12.5" fill="#1C1B18">焦点の絞れた実装</text>
+        <text x="544" y="152" text-anchor="middle" font-size="22" fill="#3F7D54">⌄</text>
+        <rect x="469" y="160" width="346" height="48" rx="8" fill="#D9EDDF" stroke="#BFDDC7"/>
+        <text x="642" y="180" text-anchor="middle" font-size="12.5" font-weight="700" fill="#234b30">「何を・どう・どの順で」が確定</text>
+        <text x="642" y="198" text-anchor="middle" font-size="11.5" fill="#33694a">推測が消え、手戻りが激減</text>
+      </g>
+    </svg>
+    <figcaption><b>図1</b>：問題は能力ではなく曖昧さ。エージェントは<b>パターン補完は得意だが読心術はできない</b>。</figcaption>
+  </figure>
+
+  <div class="callout c-key">
+    <div class="ttl">◆ 発想の核</div>
+    エージェントを「検索エンジン」のように扱うのをやめ、<strong>「文字通りに解釈するペアプログラマー」</strong>として、曖昧さのない指示を与える。そのために仕様を「書いて放置する静的文書」ではなく、<strong>プロジェクトと共に進化する“実行可能な生きた成果物”</strong>として捉え直す ― これが Spec Kit の出発点です。
+  </div>
+</section>
+
+<!-- ===================== 3. INVERSION ===================== -->
+<section id="inversion">
+  <div class="sec-head"><span class="sec-num">03</span><h2>中核思想：意図が真実の源</h2></div>
+  <p class="sec-sub">「コードが真実の源」から「意図（仕様）が真実の源」へ。AIが仕様を“実行可能”にしたことで成立する転換。</p>
+
+  <p>Spec Kit は、仕様とコードの<strong>力関係を反転</strong>させます。従来は「仕様は書いて脇に置き、コードこそが正」でした。Spec Kit では<strong>仕様が中心に居座り、実装・チェックリスト・タスク分解を駆動</strong>します。あなたの主な仕事は舵を取ること、書く作業の大半はエージェントが担います。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="仕様とコードの力関係の反転">
+      <defs>
+        <marker id="aa" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#6E6960"/></marker>
+        <marker id="av" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#6A5099"/></marker>
+      </defs>
+      <g font-family="Hiragino Sans,system-ui,sans-serif">
+        <!-- before -->
+        <text x="40" y="42" font-size="13" font-weight="800" fill="#6E6960">従来</text>
+        <rect x="40" y="54" width="130" height="46" rx="9" fill="#FBF8F3" stroke="#D6CCBD"/>
+        <text x="105" y="74" text-anchor="middle" font-size="12.5" fill="#6E6960">仕様</text>
+        <text x="105" y="91" text-anchor="middle" font-size="10.5" fill="#9B958B">書いたら脇に置く</text>
+        <rect x="220" y="54" width="130" height="46" rx="9" fill="#211F1B"/>
+        <text x="285" y="74" text-anchor="middle" font-size="12.5" font-weight="700" fill="#E6BBA6">コード＝真実</text>
+        <text x="285" y="91" text-anchor="middle" font-size="10.5" fill="#C9C2B6">後から文書を補う</text>
+        <path d="M170,77 L218,77" stroke="#6E6960" stroke-width="1.8" marker-end="url(#aa)"/>
+        <text x="390" y="80" font-size="13" fill="#9B958B">⌁ 意図が失われやすい</text>
+
+        <!-- after -->
+        <text x="40" y="150" font-size="13" font-weight="800" fill="#4a3a72">Spec Kit</text>
+        <rect x="40" y="162" width="150" height="58" rx="9" fill="#E8E1F2" stroke="#cfc1ea"/>
+        <text x="115" y="186" text-anchor="middle" font-size="13" font-weight="800" fill="#4a3a72">意図＝仕様＝真実</text>
+        <text x="115" y="205" text-anchor="middle" font-size="10.5" fill="#5a4d7a">中心に居座り続ける</text>
+        <rect x="250" y="168" width="120" height="46" rx="9" fill="#fff" stroke="#cfc1ea"/>
+        <text x="310" y="195" text-anchor="middle" font-size="12.5" fill="#1C1B18">計画</text>
+        <rect x="410" y="168" width="120" height="46" rx="9" fill="#fff" stroke="#cfc1ea"/>
+        <text x="470" y="195" text-anchor="middle" font-size="12.5" fill="#1C1B18">タスク</text>
+        <rect x="570" y="168" width="120" height="46" rx="9" fill="#E0EEE3" stroke="#BFDDC7"/>
+        <text x="630" y="195" text-anchor="middle" font-size="12.5" font-weight="700" fill="#234b30">コード（生成）</text>
+        <path d="M190,191 L248,191" stroke="#6A5099" stroke-width="2.2" marker-end="url(#av)"/>
+        <path d="M370,191 L408,191" stroke="#6A5099" stroke-width="2.2" marker-end="url(#av)"/>
+        <path d="M530,191 L568,191" stroke="#6A5099" stroke-width="2.2" marker-end="url(#av)"/>
+        <text x="720" y="187" font-size="12" fill="#5a4d7a">変更は</text>
+        <text x="720" y="203" font-size="12" fill="#5a4d7a">仕様側で行う</text>
+      </g>
+    </svg>
+    <figcaption><b>図2</b>：「<b>コードが仕様に奉仕する</b>」。安定した『何を』と、柔軟な『どう』を分離するから、高コストな作り直しなしに反復できる。</figcaption>
+  </figure>
+
+  <p>GitHub はこの転換を <strong>「ドキュメントが重要になったからではなく、AIが仕様を<em>実行可能</em>にしたから」</strong>と説明します。仕様が自動的に動くコードへ変わるなら、仕様こそが「何が作られるか」を決める ― だから仕様が真実の源になる、という論理です。</p>
+</section>
+
+<!-- ===================== 4. FLOW ===================== -->
+<section id="flow">
+  <div class="sec-head"><span class="sec-num">04</span><h2>仕組み：憲法＋4フェーズ</h2></div>
+  <p class="sec-sub">土台に「憲法」を置き、Specify → Plan → Tasks → Implement を明確なチェックポイントで進む。各フェーズが検証されるまで次へ進まない。</p>
+
+  <p>まず土台として <strong>Constitution（憲法）</strong> を置きます。<code>/.specify/memory/constitution.md</code> に<strong>プロジェクトの“交渉不可能な”原則・制約</strong>を記述し、以降の全フェーズがこれに従います。その上で、明確なチェックポイントを持つ4フェーズが進みます。<strong>鍵は「各フェーズが完全に検証されるまで次へ進まない」</strong>こと。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="憲法と4フェーズのパイプライン">
+      <defs>
+        <marker id="pf" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#C15F3C"/></marker>
+      </defs>
+      <g font-family="Hiragino Sans,system-ui,sans-serif">
+        <!-- human steer band -->
+        <rect x="20" y="20" width="820" height="34" rx="10" fill="#211F1B"/>
+        <text x="40" y="42" font-size="12.5" font-weight="800" fill="#E6BBA6">あなた（人間）＝ steer 方向づけ ＋ verify 各チェックポイントで検証・軌道修正</text>
+
+        <!-- 4 phases -->
+        <!-- specify -->
+        <rect x="24" y="76" width="194" height="120" rx="11" fill="#DEEAF1" stroke="#C5DAE7"/>
+        <circle cx="48" cy="100" r="13" fill="#3A6B8C"/><text x="48" y="105" text-anchor="middle" font-size="13" font-weight="800" fill="#fff">1</text>
+        <text x="70" y="98" font-size="14.5" font-weight="800" fill="#274558">Specify</text>
+        <text x="70" y="114" font-size="10.5" fill="#3A6B8C">仕様化</text>
+        <text x="40" y="138" font-size="11" fill="#274558">入力：何を・なぜ</text>
+        <text x="40" y="155" font-size="11" fill="#274558">（ユーザー体験）</text>
+        <text x="40" y="178" font-size="11" font-weight="700" fill="#1C1B18">→ 詳細仕様を生成</text>
+        <!-- plan -->
+        <rect x="230" y="76" width="194" height="120" rx="11" fill="#DEEAF1" stroke="#C5DAE7"/>
+        <circle cx="254" cy="100" r="13" fill="#3A6B8C"/><text x="254" y="105" text-anchor="middle" font-size="13" font-weight="800" fill="#fff">2</text>
+        <text x="276" y="98" font-size="14.5" font-weight="800" fill="#274558">Plan</text>
+        <text x="276" y="114" font-size="10.5" fill="#3A6B8C">計画</text>
+        <text x="246" y="138" font-size="11" fill="#274558">入力：スタック・</text>
+        <text x="246" y="155" font-size="11" fill="#274558">制約・アーキ</text>
+        <text x="246" y="178" font-size="11" font-weight="700" fill="#1C1B18">→ 技術計画を生成</text>
+        <!-- tasks -->
+        <rect x="436" y="76" width="194" height="120" rx="11" fill="#DEEAF1" stroke="#C5DAE7"/>
+        <circle cx="460" cy="100" r="13" fill="#3A6B8C"/><text x="460" y="105" text-anchor="middle" font-size="13" font-weight="800" fill="#fff">3</text>
+        <text x="482" y="98" font-size="14.5" font-weight="800" fill="#274558">Tasks</text>
+        <text x="482" y="114" font-size="10.5" fill="#3A6B8C">タスク分解</text>
+        <text x="452" y="138" font-size="11" fill="#274558">仕様＋計画を</text>
+        <text x="452" y="155" font-size="11" fill="#274558">小さな単位に</text>
+        <text x="452" y="178" font-size="11" font-weight="700" fill="#1C1B18">→ 検証可能なタスク</text>
+        <!-- implement -->
+        <rect x="642" y="76" width="194" height="120" rx="11" fill="#E0EEE3" stroke="#BFDDC7"/>
+        <circle cx="666" cy="100" r="13" fill="#3F7D54"/><text x="666" y="105" text-anchor="middle" font-size="13" font-weight="800" fill="#fff">4</text>
+        <text x="688" y="98" font-size="14.5" font-weight="800" fill="#234b30">Implement</text>
+        <text x="688" y="114" font-size="10.5" fill="#3F7D54">実装</text>
+        <text x="658" y="138" font-size="11" fill="#234b30">タスクを1つずつ</text>
+        <text x="658" y="155" font-size="11" fill="#234b30">／並列で</text>
+        <text x="658" y="178" font-size="11" font-weight="700" fill="#1C1B18">→ 焦点を絞った差分</text>
+
+        <!-- checkpoint arrows between phases -->
+        <path d="M218,136 L228,136" stroke="#C15F3C" stroke-width="2.4" marker-end="url(#pf)"/>
+        <path d="M424,136 L434,136" stroke="#C15F3C" stroke-width="2.4" marker-end="url(#pf)"/>
+        <path d="M630,136 L640,136" stroke="#C15F3C" stroke-width="2.4" marker-end="url(#pf)"/>
+        <text x="223" y="210" text-anchor="middle" font-size="9.5" fill="#A84A2A">✓検証</text>
+        <text x="429" y="210" text-anchor="middle" font-size="9.5" fill="#A84A2A">✓検証</text>
+        <text x="635" y="210" text-anchor="middle" font-size="9.5" fill="#A84A2A">✓検証</text>
+
+        <!-- constitution foundation -->
+        <rect x="24" y="244" width="812" height="64" rx="12" fill="#C15F3C"/>
+        <text x="430" y="270" text-anchor="middle" font-size="14.5" font-weight="800" fill="#FFFFFF">Constitution（憲法） ― .specify/memory/constitution.md</text>
+        <text x="430" y="291" text-anchor="middle" font-size="12" fill="#F2DBCF">プロジェクトの交渉不可能な原則・制約。全フェーズがこれに従う土台</text>
+        <path d="M430,242 L430,232" stroke="#C15F3C" stroke-width="2"/>
+        <text x="700" y="232" font-size="10.5" fill="#A84A2A">▲ 4フェーズを下支え</text>
+      </g>
+    </svg>
+    <figcaption><b>図3</b>：仕様→計画→タスク→実装と<b>抽象から具体へ降りていく</b>。各境目に人間の検証ゲートがあり、土台に憲法がある。</figcaption>
+  </figure>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>フェーズ</th><th>あなたが与えるもの</th><th>エージェントが生成するもの</th></tr></thead>
+      <tbody>
+        <tr><td class="method">Specify<br>仕様化</td><td>「何を・なぜ」作るかの高レベル説明。<strong>ユーザー体験・ジャーニー・成功の定義</strong>が主役（技術の話はしない）。</td><td>詳細な仕様。「誰が使い、どんな問題を解き、どう操作し、どんな結果が重要か」を記述した<strong>生きた成果物</strong>。</td></tr>
+        <tr><td class="method">Plan<br>計画</td><td>ここで初めて技術へ。<strong>スタック・アーキテクチャ・制約</strong>（標準技術、レガシー連携、コンプラ、性能目標、社内ドキュメント）。</td><td>制約を尊重した包括的な技術計画。<strong>複数案を比較</strong>させることも可能。</td></tr>
+        <tr><td class="method">Tasks<br>タスク分解</td><td>（指示は最小限）仕様と計画の確定。</td><td><strong>単独で実装・テスト可能な小タスク</strong>群。例：「認証を作る」ではなく「メール形式を検証する登録エンドポイントを作る」。AIにとってのTDD的な足場。</td></tr>
+        <tr><td class="method">Implement<br>実装</td><td>タスクのレビューと承認。</td><td>タスクを1つずつ（可能なら並列で）実装。あなたは千行の塊でなく<strong>焦点の絞られた差分</strong>をレビューする。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout c-good">
+    <div class="ttl">✔ なぜ4分割なのか</div>
+    実装時、エージェントは<strong>「何を（仕様）・どう（計画）・今どれを（タスク）」</strong>すべて分かった状態でコードを書きます。だから推測がなく、レビューも小さな単位で済みます。
+  </div>
+</section>
+
+<!-- ===================== 5. ROLE ===================== -->
+<section id="role">
+  <div class="sec-head"><span class="sec-num">05</span><h2>人間の役割：steer と verify</h2></div>
+  <p class="sec-sub">成果物はAIが書く。あなたの仕事は方向づけと検証 ― 「進む前に立ち止まって批評する」。</p>
+
+  <p>Spec Kit のプロセスには<strong>明示的なチェックポイント</strong>が組み込まれています。各フェーズの境目で、あなたは生成物を批評し、欠落やエッジケースを見つけ、先に進む前に軌道修正します。<strong>AIが成果物を生成し、あなたがそれが正しいことを保証する</strong>、という分業です。各チェックポイントで自問すべきことは次の通りです。</p>
+
+  <ul class="clean">
+    <li><strong>仕様は本当に作りたいものを捉えているか？</strong> ― ユーザー体験と成功条件にズレはないか。</li>
+    <li><strong>計画は現実の制約を考慮しているか？</strong> ― スタック・性能・コンプラ・レガシー連携は妥当か。</li>
+    <li><strong>AIが見落としたエッジケースや抜けはないか？</strong> ― タスクの粒度と網羅性は十分か。</li>
+  </ul>
+
+  <div class="callout c-info">
+    <div class="ttl">▶ 「steer（操舵）」と「verify（検証）」</div>
+    あなたは細部を書く人ではなく<strong>舵を取る人</strong>であり、同時に<strong>各段階の品質ゲート</strong>でもあります。これは前回ガイド10章の「検証で締める」「早めの軌道修正」と同じ精神です。
+  </div>
+</section>
+
+<!-- ===================== 6. CLI ===================== -->
+<section id="cli">
+  <div class="sec-head"><span class="sec-num">06</span><h2>導入とコマンド</h2></div>
+  <p class="sec-sub">CLI「specify」でプロジェクトを初期化し、エージェント内のスラッシュコマンドで各フェーズを駆動する。</p>
+
+  <h3>1. CLI の導入とプロジェクト初期化</h3>
+  <p><code>specify</code> CLI を <code>uvx</code> 経由で実行し、プロジェクトの雛形と構造をセットアップします。</p>
+  <pre><code><span class="c"># specify CLI でプロジェクトを初期化</span>
+uvx --from git+https://github.com/github/spec-kit.git specify init <span class="k">&lt;PROJECT_NAME&gt;</span>
+
+<span class="c"># 使用エージェントを明示する場合（非対話実行では既定で Copilot）</span>
+specify init <span class="k">&lt;PROJECT_NAME&gt;</span> --integration claude</code></pre>
+  <p>初期化時、導入済みのエージェントが検出され、対話的に選択できます。</p>
+
+  <h3>2. スラッシュコマンドで各フェーズを実行</h3>
+  <p>設定が済むと、エージェント内で次のコマンドが使えます（新しい版では <code>speckit.</code> 名前空間付き）。これらが表示されれば設定成功です。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="コマンドと生成される成果物">
+      <defs>
+        <marker id="ca" markerWidth="9" markerHeight="9" refX="4.5" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#6E6960"/></marker>
+      </defs>
+      <g font-family="Hiragino Sans,system-ui,sans-serif">
+        <!-- command column -->
+        <text x="150" y="34" text-anchor="middle" font-size="12.5" font-weight="800" fill="#A84A2A">コマンド</text>
+        <text x="560" y="34" text-anchor="middle" font-size="12.5" font-weight="800" fill="#234b30">主な成果物（Markdown）</text>
+        <g font-size="12.5">
+          <rect x="30" y="48" width="240" height="32" rx="7" fill="#FBF8F3" stroke="#E7C3B2"/><text x="44" y="69" font-family="monospace" fill="#A84A2A">/speckit.constitution</text>
+          <rect x="30" y="88" width="240" height="32" rx="7" fill="#FBF8F3" stroke="#E7C3B2"/><text x="44" y="109" font-family="monospace" fill="#A84A2A">/speckit.specify</text>
+          <rect x="30" y="128" width="240" height="32" rx="7" fill="#FBF8F3" stroke="#E7C3B2"/><text x="44" y="149" font-family="monospace" fill="#A84A2A">/speckit.plan</text>
+          <rect x="30" y="168" width="240" height="32" rx="7" fill="#FBF8F3" stroke="#E7C3B2"/><text x="44" y="189" font-family="monospace" fill="#A84A2A">/speckit.tasks</text>
+          <rect x="30" y="208" width="240" height="32" rx="7" fill="#E0EEE3" stroke="#BFDDC7"/><text x="44" y="229" font-family="monospace" fill="#234b30">/speckit.implement</text>
+        </g>
+        <!-- artifacts column -->
+        <g font-size="12.5">
+          <rect x="450" y="48" width="380" height="32" rx="7" fill="#fff" stroke="#D6CCBD"/><text x="464" y="69" fill="#1C1B18"><tspan font-family="monospace" fill="#A84A2A">constitution.md</tspan> ― プロジェクトの原則</text>
+          <rect x="450" y="88" width="380" height="32" rx="7" fill="#fff" stroke="#D6CCBD"/><text x="464" y="109" fill="#1C1B18"><tspan font-family="monospace" fill="#A84A2A">spec.md</tspan> ― 何を・なぜ（仕様）</text>
+          <rect x="450" y="128" width="380" height="32" rx="7" fill="#fff" stroke="#D6CCBD"/><text x="464" y="149" fill="#1C1B18"><tspan font-family="monospace" fill="#A84A2A">plan.md</tspan> ― 技術計画</text>
+          <rect x="450" y="168" width="380" height="32" rx="7" fill="#fff" stroke="#D6CCBD"/><text x="464" y="189" fill="#1C1B18"><tspan font-family="monospace" fill="#A84A2A">tasks.md</tspan> ― 実装タスク一覧</text>
+          <rect x="450" y="208" width="380" height="32" rx="7" fill="#fff" stroke="#BFDDC7"/><text x="464" y="229" fill="#1C1B18">実コード ＋ タスクの消化</text>
+        </g>
+        <!-- arrows -->
+        <path d="M272,64 L448,64" stroke="#6E6960" stroke-width="1.5" marker-end="url(#ca)"/>
+        <path d="M272,104 L448,104" stroke="#6E6960" stroke-width="1.5" marker-end="url(#ca)"/>
+        <path d="M272,144 L448,144" stroke="#6E6960" stroke-width="1.5" marker-end="url(#ca)"/>
+        <path d="M272,184 L448,184" stroke="#6E6960" stroke-width="1.5" marker-end="url(#ca)"/>
+        <path d="M272,224 L448,224" stroke="#6E6960" stroke-width="1.5" marker-end="url(#ca)"/>
+      </g>
+    </svg>
+    <figcaption><b>図4</b>：各コマンドが対応する Markdown 成果物を生成。すべて <code>.specify/</code> 配下にリポジトリ内のファイルとして残り、人もエージェントも参照できる。</figcaption>
+  </figure>
+
+  <div class="callout c-warn">
+    <div class="ttl">⚠ コマンド名について</div>
+    初公開時は <code>/specify</code> <code>/plan</code> <code>/tasks</code> でしたが、現在は衝突回避のため <code>/speckit.specify</code> のように<strong>名前空間付き</strong>に変わっています。版によって異なるため、初期化後に表示されるコマンド一覧で確認してください。
+  </div>
+</section>
+
+<!-- ===================== 7. AGENTS ===================== -->
+<section id="agents">
+  <div class="sec-head"><span class="sec-num">07</span><h2>対応エージェント</h2></div>
+  <p class="sec-sub">「お好みのAIツールで使える」のが売り。主要エージェントを中心に幅広く対応する。</p>
+
+  <p>Spec Kit は特定のエージェントに縛られません。CLI が導入済みのエージェントを検出し、テンプレートを各ツール向けに展開します。公式が中心に挙げるのは <strong>GitHub Copilot・Claude Code・Gemini CLI</strong> の3つです。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="対応エージェント一覧">
+      <g font-family="Hiragino Sans,system-ui,sans-serif">
+        <text x="40" y="32" font-size="12.5" font-weight="800" fill="#A84A2A">主要（公式が中心に挙げる）</text>
+        <rect x="40" y="44" width="240" height="46" rx="10" fill="#F2DBCF" stroke="#E7C3B2"/><text x="160" y="72" text-anchor="middle" font-size="14" font-weight="700" fill="#A84A2A">GitHub Copilot</text>
+        <rect x="300" y="44" width="240" height="46" rx="10" fill="#F2DBCF" stroke="#E7C3B2"/><text x="420" y="72" text-anchor="middle" font-size="14" font-weight="700" fill="#A84A2A">Claude Code</text>
+        <rect x="560" y="44" width="260" height="46" rx="10" fill="#F2DBCF" stroke="#E7C3B2"/><text x="690" y="72" text-anchor="middle" font-size="14" font-weight="700" fill="#A84A2A">Gemini CLI</text>
+
+        <text x="40" y="124" font-size="12.5" font-weight="800" fill="#274558">その他（対応が拡大中）</text>
+        <g font-size="12.5" fill="#274558">
+          <rect x="40" y="136" width="148" height="40" rx="9" fill="#DEEAF1" stroke="#C5DAE7"/><text x="114" y="161" text-anchor="middle">Cursor</text>
+          <rect x="200" y="136" width="148" height="40" rx="9" fill="#DEEAF1" stroke="#C5DAE7"/><text x="274" y="161" text-anchor="middle">Windsurf</text>
+          <rect x="360" y="136" width="148" height="40" rx="9" fill="#DEEAF1" stroke="#C5DAE7"/><text x="434" y="161" text-anchor="middle">Codex CLI</text>
+          <rect x="520" y="136" width="148" height="40" rx="9" fill="#DEEAF1" stroke="#C5DAE7"/><text x="594" y="161" text-anchor="middle">Qwen / opencode</text>
+          <rect x="680" y="136" width="140" height="40" rx="9" fill="#DEEAF1" stroke="#C5DAE7"/><text x="750" y="161" text-anchor="middle">Kiro / Tabnine ほか</text>
+        </g>
+      </g>
+    </svg>
+    <figcaption><b>図5</b>：CLI が Claude Code・Gemini・Cursor・Codex・Qwen・opencode・Qoder・Tabnine・Kiro などを検出。<b>非対話実行では既定で Copilot</b>。</figcaption>
+  </figure>
+</section>
+
+<!-- ===================== 8. WHY WORKS ===================== -->
+<section id="works">
+  <div class="sec-head"><span class="sec-num">08</span><h2>なぜ効くのか</h2></div>
+  <p class="sec-sub">LLMの基本特性に根ざす。「パターン補完は得意、読心術は不可」への正攻法。</p>
+
+  <p>この手法が「ただプロンプトする」より優れる理由は、LLMの本質にあります。<strong>パターン補完は卓越しているが、心は読めない</strong>。「写真共有を追加して」のような曖昧な指示は、明文化されていない<strong>数千の要件をAIに推測させ</strong>、その一部は必ず外れます ― しかも実装の深部に入るまで気づけません。仕様・計画・タスクを前もって与えれば、「<strong>何を・どう・どの順で</strong>」作るかが確定し、推測が消えます。</p>
+
+  <p>だからこそ<strong>技術スタックを問わず効きます</strong>（Python でも JavaScript でも Go でも、課題は「意図を動くコードに翻訳すること」で共通）。仕様が意図を、計画が技術判断を、タスクが実装単位を、それぞれ担います。</p>
+
+  <div class="callout c-key">
+    <div class="ttl">◆ 組織にとっての価値</div>
+    セキュリティ方針・コンプラ規則・デザインシステム・連携要件 ― こうした要件は往々にして<strong>「誰かの頭の中／読まれないWiki／流れていくSlack」</strong>に散っています。Spec Kit ではそれらが<strong>仕様と計画に集約</strong>され、AIが実際に使える形になります。セキュリティ要件は後付けでなく「初日から仕様に焼き込まれる」ものになります。
+  </div>
+</section>
+
+<!-- ===================== 9. CASES ===================== -->
+<section id="cases">
+  <div class="sec-head"><span class="sec-num">09</span><h2>特に効く3つの場面</h2></div>
+  <p class="sec-sub">GitHub が挙げる、仕様駆動が威力を発揮するシナリオ。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Spec Kitが効く3つの場面">
+      <g font-family="Hiragino Sans,system-ui,sans-serif">
+        <!-- greenfield -->
+        <rect x="20" y="30" width="262" height="180" rx="13" fill="#E0EEE3" stroke="#BFDDC7"/>
+        <circle cx="151" cy="70" r="26" fill="#fff" stroke="#BFDDC7" stroke-width="2"/>
+        <text x="151" y="78" text-anchor="middle" font-size="22" font-weight="800" fill="#3F7D54">0→1</text>
+        <text x="151" y="118" text-anchor="middle" font-size="14.5" font-weight="800" fill="#234b30">グリーンフィールド</text>
+        <text x="151" y="146" text-anchor="middle" font-size="11.5" fill="#33694a">新規プロジェクト。少しの</text>
+        <text x="151" y="164" text-anchor="middle" font-size="11.5" fill="#33694a">上流作業で「汎用解」でなく</text>
+        <text x="151" y="182" text-anchor="middle" font-size="11.5" fill="#33694a">「意図したもの」を作らせる</text>
+
+        <!-- feature work (highlighted as most powerful) -->
+        <rect x="298" y="20" width="262" height="200" rx="13" fill="#F2DBCF" stroke="#C15F3C" stroke-width="2"/>
+        <text x="429" y="40" text-anchor="middle" font-size="10.5" font-weight="800" fill="#A84A2A">★ 最も強力</text>
+        <circle cx="429" cy="74" r="26" fill="#fff" stroke="#E7C3B2" stroke-width="2"/>
+        <text x="429" y="82" text-anchor="middle" font-size="18" font-weight="800" fill="#A84A2A">N→N+1</text>
+        <text x="429" y="120" text-anchor="middle" font-size="14.5" font-weight="800" fill="#A84A2A">既存への機能追加</text>
+        <text x="429" y="148" text-anchor="middle" font-size="11.5" fill="#8a4427">複雑な既存コードへの追加。</text>
+        <text x="429" y="166" text-anchor="middle" font-size="11.5" fill="#8a4427">仕様で接続を明確化し、計画に</text>
+        <text x="429" y="184" text-anchor="middle" font-size="11.5" fill="#8a4427">アーキ制約を埋め込むことで</text>
+        <text x="429" y="202" text-anchor="middle" font-size="11.5" fill="#8a4427">「後付け」でなく「ネイティブ」に</text>
+
+        <!-- legacy -->
+        <rect x="576" y="30" width="262" height="180" rx="13" fill="#DEEAF1" stroke="#C5DAE7"/>
+        <circle cx="707" cy="70" r="26" fill="#fff" stroke="#C5DAE7" stroke-width="2"/>
+        <text x="707" y="78" text-anchor="middle" font-size="20" font-weight="800" fill="#3A6B8C">⟳</text>
+        <text x="707" y="118" text-anchor="middle" font-size="14.5" font-weight="800" fill="#274558">レガシー刷新</text>
+        <text x="707" y="146" text-anchor="middle" font-size="11.5" fill="#33597a">失われがちな元の意図を</text>
+        <text x="707" y="164" text-anchor="middle" font-size="11.5" fill="#33597a">現代的な仕様に捉え直し、</text>
+        <text x="707" y="182" text-anchor="middle" font-size="11.5" fill="#33597a">技術的負債を引き継がず再構築</text>
+      </g>
+    </svg>
+    <figcaption><b>図6</b>：根底は「<b>安定した『何を』と柔軟な『どう』の分離</b>」。複数バージョンを素早く試作・実験できるようになる。</figcaption>
+  </figure>
+</section>
+
+<!-- ===================== 10. NOTES ===================== -->
+<section id="notes">
+  <div class="sec-head"><span class="sec-num">10</span><h2>位置づけ・注意点・将来</h2></div>
+  <p class="sec-sub">「ツールより本質はプロセス」。実験段階ゆえの課題と、向かう先。</p>
+
+  <p>GitHub は Spec Kit を<strong>「その移行を現実にするための実験」</strong>と位置づけ、「本当の革新は特定のツールや企業ではなく<strong>プロセスそのもの</strong>にある」としてOSS化しました。一方で実験段階ゆえの課題も率直に挙げられています。</p>
+
+  <ul class="clean">
+    <li><strong>多数の Markdown を大規模に管理する難しさ</strong> ― 仕様・タスクのファイルが増えると整理・集中が課題に。</li>
+    <li><strong>ワークフローの体験</strong> ― 大量のテキストを読むのは退屈になりがちで、より魅力的・実用的にする余地がある。</li>
+    <li><strong>VS Code 統合</strong>や<strong>複数実装の比較・差分</strong> ― 今後の探求テーマとして公式が言及。</li>
+    <li><strong>既存システムでの機能追加</strong>を機能させるには、<strong>高度なコンテキストエンジニアリング</strong>の併用が必要になる場合がある。</li>
+  </ul>
+
+  <div class="callout c-violet">
+    <div class="ttl">◆ 大局：意図が真実の源へ</div>
+    Spec Kit が体現するのは <strong>「コードが真実の源」→「意図（仕様）が真実の源」</strong>という移行です。これは前回ガイドで述べた<strong>コンテキストエンジニアリング</strong>（必要十分な高シグナル情報をエージェントに与える）と表裏一体であり、GitHub も「SDDとコンテキストエンジニアリングの組み合わせ」を次のテーマに挙げています。
+  </div>
+</section>
+
+<!-- ===================== 11. REFS ===================== -->
+<section id="refs">
+  <div class="sec-head"><span class="sec-num">11</span><h2>出典</h2></div>
+  <p class="sec-sub">GitHub 公式の一次情報を主軸に作成。</p>
+  <ul class="clean">
+    <li><a href="https://github.blog/ai-and-ml/generative-ai/spec-driven-development-with-ai-get-started-with-a-new-open-source-toolkit/">Spec-driven development with AI: Get started with a new open source toolkit</a> ― GitHub Blog（2025-09-02, Den Delimarsky）。4フェーズ・思想・使い方・3つの場面の原典。</li>
+    <li><a href="https://github.com/github/spec-kit">github/spec-kit</a> ― 公式リポジトリ（CLI・テンプレート・対応エージェント・コマンド）。</li>
+    <li><a href="https://github.github.com/spec-kit/">Spec Kit Documentation / Quick Start</a> ― 公式ドキュメント。</li>
+    <li><a href="https://developer.microsoft.com/blog/spec-driven-development-spec-kit">Diving Into Spec-Driven Development With GitHub Spec Kit</a> ― Microsoft for Developers（憲法・コマンドの実践解説）。</li>
+  </ul>
+  <p class="src">※ Spec Kit は実験的かつ活発に開発が続いています。コマンド名（名前空間）や対応エージェント、生成ファイル構成は変わり得るため、利用時は公式の最新版をご確認ください。</p>
+</section>
+
+<p style="text-align:center; color:var(--faint); font-size:13px; margin:40px 0 10px">― 以上 ―</p>
+
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <h4>このドキュメントについて</h4>
+    <p style="color:#C9C2B6">GitHub 公式ブログ（2025年9月2日, Den Delimarsky）および github/spec-kit リポジトリの公開情報に基づき2026年6月時点で作成。Spec Kit は実験的かつ活発に開発が続くため、コマンド名や対応エージェントは最新の公式ドキュメントをご確認ください。</p>
+  </div>
+</footer>
+
+</body>
+</html>

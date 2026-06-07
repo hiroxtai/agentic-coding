@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>セッション間引き継ぎ 詳解 ― AIエージェントの記憶の仕組み（2026年6月）</title>
+<style>
+  :root{
+    --bg:#F4EFE7; --surface:#FFFFFF; --surface-2:#FBF8F3;
+    --ink:#1C1B18; --muted:#6E6960; --faint:#9B958B;
+    --accent:#C15F3C; --accent-deep:#A84A2A; --accent-soft:#F2DBCF;
+    --line:#E5DDD1; --line-strong:#D6CCBD;
+    --good:#3F7D54; --good-soft:#E0EEE3;
+    --warn:#B8860B; --warn-soft:#F6ECCF;
+    --info:#3A6B8C; --info-soft:#DEEAF1;
+    --violet:#6A5099; --violet-soft:#E8E1F2;
+    --shadow:0 1px 2px rgba(40,30,20,.04),0 8px 24px rgba(40,30,20,.06);
+    --radius:16px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    line-height:1.85; font-size:16.5px; letter-spacing:.01em;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:980px; margin:0 auto; padding:0 22px}
+  h1,h2,h3,h4{line-height:1.4; letter-spacing:.005em}
+
+  .hero{
+    background:
+      radial-gradient(120% 140% at 85% -10%, rgba(58,107,140,.20), transparent 55%),
+      radial-gradient(110% 130% at -10% 0%, rgba(193,95,60,.14), transparent 50%),
+      linear-gradient(180deg,#1E2228 0%, #25282C 100%);
+    color:#F4EFE7; padding:60px 0 52px; position:relative; overflow:hidden;
+  }
+  .hero .wrap{position:relative; z-index:2}
+  .kicker{display:inline-block; font-size:12.5px; letter-spacing:.18em; text-transform:uppercase; color:#9FC4DA; border:1px solid rgba(159,196,218,.4); padding:5px 12px; border-radius:999px; margin-bottom:22px}
+  .hero h1{font-size:35px; margin:0 0 16px; font-weight:800; letter-spacing:0}
+  .hero h1 .em{color:#7FB2D4}
+  .hero p.lead{font-size:17px; color:#D9D2C7; max-width:770px; margin:0 0 24px}
+  .hero .meta{display:flex; flex-wrap:wrap; gap:10px 22px; font-size:13.5px; color:#AEB7BF}
+  .hero .meta b{color:#9FC4DA; font-weight:600}
+  .hero-figs{display:flex; flex-wrap:wrap; gap:10px; margin-top:28px}
+  .chip{background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); padding:7px 14px; border-radius:999px; font-size:13px; color:#EFE8DC}
+  .chip b{color:#7FB2D4; font-weight:700}
+
+  section{padding:44px 0 8px}
+  .sec-head{display:flex; align-items:baseline; gap:14px; margin-bottom:8px}
+  .sec-num{font-size:13px; font-weight:800; color:var(--accent); letter-spacing:.1em; border:1.5px solid var(--accent-soft); background:var(--surface); border-radius:8px; padding:3px 9px; white-space:nowrap}
+  h2{font-size:25px; margin:0; font-weight:800}
+  .sec-sub{color:var(--muted); font-size:15.5px; margin:6px 0 22px}
+  h3{font-size:18.5px; margin:28px 0 10px; font-weight:700}
+  p{margin:0 0 16px}
+  a{color:var(--accent-deep); text-decoration:none; border-bottom:1px solid var(--accent-soft)}
+  a:hover{border-bottom-color:var(--accent)}
+  strong{font-weight:700}
+  .em-ink{color:var(--accent-deep); font-weight:700}
+
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:22px 26px; box-shadow:var(--shadow); margin:20px 0}
+  .callout{border-radius:14px; padding:16px 20px; margin:20px 0; font-size:15.5px; border:1px solid}
+  .callout .ttl{font-weight:800; font-size:14px; letter-spacing:.04em; margin-bottom:6px; display:flex; align-items:center; gap:8px}
+  .c-key{background:var(--accent-soft); border-color:#E7C3B2; color:#5e2a17}
+  .c-key .ttl{color:var(--accent-deep)}
+  .c-info{background:var(--info-soft); border-color:#C5DAE7; color:#274558}
+  .c-info .ttl{color:var(--info)}
+  .c-good{background:var(--good-soft); border-color:#BFDDC7; color:#234b30}
+  .c-good .ttl{color:var(--good)}
+  .c-warn{background:var(--warn-soft); border-color:#E8D49A; color:#5c4708}
+  .c-warn .ttl{color:#8a6608}
+  .c-violet{background:var(--violet-soft); border-color:#cfc1ea; color:#3f3266}
+  .c-violet .ttl{color:var(--violet)}
+
+  .toc{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:22px 26px; box-shadow:var(--shadow); margin:30px 0 6px}
+  .toc h4{margin:0 0 14px; font-size:13px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted)}
+  .toc ol{margin:0; padding:0; list-style:none; counter-reset:t; display:grid; grid-template-columns:1fr 1fr; gap:6px 28px}
+  .toc li{counter-increment:t; font-size:15px; padding:5px 0; border-bottom:1px dashed var(--line)}
+  .toc li a{border:0; color:var(--ink); display:flex; gap:10px; align-items:baseline}
+  .toc li a:hover{color:var(--accent-deep)}
+  .toc li a::before{content:counter(t,decimal-leading-zero); color:var(--accent); font-weight:800; font-size:12.5px; min-width:22px}
+
+  .tbl-wrap{overflow-x:auto; margin:20px 0; border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow)}
+  table{border-collapse:collapse; width:100%; font-size:14.5px; background:var(--surface)}
+  th,td{text-align:left; padding:12px 16px; border-bottom:1px solid var(--line); vertical-align:top}
+  thead th{background:var(--surface-2); font-weight:700; color:var(--ink); font-size:13.5px; border-bottom:2px solid var(--line-strong)}
+  tbody tr:last-child td{border-bottom:0}
+  tbody tr:hover{background:var(--surface-2)}
+  td.method{font-weight:700; color:var(--accent-deep); white-space:nowrap}
+  .pill{display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px; letter-spacing:.03em}
+  .p-low{background:var(--good-soft); color:var(--good)}
+  .p-mid{background:var(--warn-soft); color:#8a6608}
+  .p-high{background:#F4D9CF; color:var(--accent-deep)}
+  code{background:var(--surface-2); border:1px solid var(--line); border-radius:6px; padding:1.5px 6px; font-family:"SF Mono",Menlo,Consolas,monospace; font-size:13.5px; color:var(--accent-deep)}
+  pre{background:#211F1B; color:#EFE8DC; border-radius:12px; padding:16px 18px; overflow-x:auto; font-family:"SF Mono",Menlo,Consolas,monospace; font-size:13px; line-height:1.7; margin:16px 0}
+  pre code{background:none; border:0; color:#EFE8DC; padding:0}
+  pre .c{color:#9B958B}
+
+  figure{margin:24px 0; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:22px 20px 14px; box-shadow:var(--shadow)}
+  figure svg{display:block; width:100%; height:auto}
+  figcaption{font-size:13px; color:var(--muted); text-align:center; margin-top:12px; padding-top:10px; border-top:1px dashed var(--line)}
+  figcaption b{color:var(--accent-deep)}
+
+  ul.clean{margin:6px 0 18px; padding:0; list-style:none}
+  ul.clean li{position:relative; padding:4px 0 4px 26px; font-size:15.5px}
+  ul.clean li::before{content:""; position:absolute; left:6px; top:14px; width:7px; height:7px; border-radius:2px; background:var(--accent); transform:rotate(45deg)}
+
+  .src{font-size:13px; color:var(--muted)}
+  footer{margin-top:48px; background:#1E2228; color:#C9C2B6; padding:38px 0}
+  footer .wrap{font-size:14px}
+  footer h4{color:#9FC4DA; margin:0 0 10px; font-size:13px; letter-spacing:.1em; text-transform:uppercase}
+  footer a{color:#9FC4DA; border-bottom:1px solid rgba(159,196,218,.3)}
+
+  @media(max-width:680px){
+    .hero h1{font-size:27px}
+    h2{font-size:21px}
+    .toc ol{grid-template-columns:1fr}
+    .wrap{padding:0 16px}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="kicker">Session Handoff · Agent Memory · Deep Dive</span>
+    <h1>セッション間<span class="em">引き継ぎ</span> 詳解</h1>
+    <p class="lead">「記憶のない新人が毎シフト来る」問題をどう解くか。AIコーディングエージェントの記憶を、様々なプロジェクトで使える“汎用的な仕組み”として構築するための手法を、2026年6月時点の一次情報をもとに図解で整理します。前回ガイド07章の発展版です。</p>
+    <div class="meta">
+      <span><b>対象期間</b> 2026年6月</span>
+      <span><b>主軸</b> Memory Bank・メモリMCP・標準</span>
+      <span><b>狙い</b> 横断・可搬な引き継ぎ基盤</span>
+    </div>
+    <div class="hero-figs">
+      <span class="chip"><b>3</b> 層モデル</span>
+      <span class="chip"><b>3</b> 種類の記憶</span>
+      <span class="chip"><b>二段構え</b> の推奨アーキテクチャ</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <nav class="toc" aria-label="目次">
+    <h4>目次</h4>
+    <ol>
+      <li><a href="#why">なぜ引き継ぎが必要か</a></li>
+      <li><a href="#layers">全体像：3層モデル</a></li>
+      <li><a href="#membank">Memory Bank（最有力の対応物）</a></li>
+      <li><a href="#tools">主要ツールキット比較</a></li>
+      <li><a href="#types">設計の核：メモリの3種類</a></li>
+      <li><a href="#scope">マルチスコープと多信号検索</a></li>
+      <li><a href="#arch">推奨アーキテクチャ：二段構え</a></li>
+      <li><a href="#lifecycle">セッションのライフサイクル</a></li>
+      <li><a href="#open">未解決問題と注意点</a></li>
+      <li><a href="#choose">使い分け・出発点</a></li>
+      <li><a href="#refs">出典</a></li>
+    </ol>
+  </nav>
+
+<!-- ===================== 1. WHY ===================== -->
+<section id="why">
+  <div class="sec-head"><span class="sec-num">01</span><h2>なぜ引き継ぎが必要か</h2></div>
+  <p class="sec-sub">エージェントの記憶はセッションごとに消える。引き継ぎとは「窓の外に記憶を残し、次が読み戻す」設計のこと。</p>
+
+  <p>長時間・複数日に渡る開発で最大の壁は、<strong>各セッションが前回の記憶ゼロで始まる</strong>ことです。Anthropic はこれを<strong>「シフト制で働くエンジニアが、毎回前のシフトの記憶なしで現れる」</strong>と喩えました。Cline の Memory Bank も<strong>「私の記憶はセッション間で完全にリセットされる。だからこそ完璧な文書化に頼る」</strong>という同じ前提から出発します。</p>
+
+  <p>つまり「セッション間引き継ぎ」とは、<span class="em-ink">コンテキスト窓という揮発メモリの外に、永続的な記憶を構造化して書き残し、次のセッションがそれを読んで現在地を復元する</span>仕組みづくりにほかなりません。2026年には、これが「個別の工夫」から<strong>独立した設計領域</strong>へと成熟し、専用ツールキット・MCP基盤・ベンチマークまで整いました。</p>
+
+  <div class="callout c-violet">
+    <div class="ttl">◆ 前回ガイドとの接続</div>
+    本資料は「コーディングエージェント開発手法ガイド」<strong>07章（ADR/メモリ駆動の引き継ぎ）</strong>を、独立した1テーマとして深掘りするものです。05章で扱った Spec Kit が「仕様」を中心に置くのと対をなし、ここでは<strong>「記憶」を中心に置く仕組み</strong>を扱います。
+  </div>
+</section>
+
+<!-- ===================== 2. LAYERS ===================== -->
+<section id="layers">
+  <div class="sec-head"><span class="sec-num">02</span><h2>全体像：3層モデル</h2></div>
+  <p class="sec-sub">引き継ぎの仕組みは独立した3つの層の組み合わせ。混同しがちだが、役割は直交している。</p>
+
+  <p>世の中のツールや手法は一見ばらばらですが、<strong>「何を書くか（規約）」「どう保存・検索するか（基盤）」「エージェントがどう使うか（組込み）」</strong>の3層に整理すると見通せます。それぞれ別々に選べるので、要件に応じて足し引きできます。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="引き継ぎの3層モデル">
+      <g font-family="Hiragino Sans,system-ui,sans-serif">
+        <!-- layer 1: convention -->
+        <rect x="20" y="26" width="820" height="84" rx="13" fill="#F2DBCF" stroke="#E7C3B2"/>
+        <rect x="20" y="26" width="186" height="84" rx="13" fill="#E7C3B2"/>
+        <text x="113" y="60" text-anchor="middle" font-size="14.5" font-weight="800" fill="#5e2a17">規約層</text>
+        <text x="113" y="80" text-anchor="middle" font-size="11.5" fill="#8a4427">何を書くか</text>
+        <text x="113" y="97" text-anchor="middle" font-size="11.5" fill="#8a4427">（人が読める）</text>
+        <g font-size="12.5" fill="#5e2a17">
+          <rect x="222" y="44" width="180" height="48" rx="9" fill="#fff" stroke="#E7C3B2"/><text x="312" y="65" text-anchor="middle" font-weight="700">Memory Bank files</text><text x="312" y="82" text-anchor="middle" font-size="10.5" fill="#8a4427">progress / activeContext…</text>
+          <rect x="414" y="44" width="180" height="48" rx="9" fill="#fff" stroke="#E7C3B2"/><text x="504" y="65" text-anchor="middle" font-weight="700">AGENTS.md</text><text x="504" y="82" text-anchor="middle" font-size="10.5" fill="#8a4427">今守るルール（標準）</text>
+          <rect x="606" y="44" width="216" height="48" rx="9" fill="#fff" stroke="#E7C3B2"/><text x="714" y="65" text-anchor="middle" font-weight="700">ADR / AgDR</text><text x="714" y="82" text-anchor="middle" font-size="10.5" fill="#8a4427">決定と「なぜ」を追跡</text>
+        </g>
+
+        <!-- layer 2: infrastructure -->
+        <rect x="20" y="120" width="820" height="84" rx="13" fill="#DEEAF1" stroke="#C5DAE7"/>
+        <rect x="20" y="120" width="186" height="84" rx="13" fill="#C5DAE7"/>
+        <text x="113" y="154" text-anchor="middle" font-size="14.5" font-weight="800" fill="#23415a">基盤層</text>
+        <text x="113" y="174" text-anchor="middle" font-size="11.5" fill="#33597a">どう保存・</text>
+        <text x="113" y="191" text-anchor="middle" font-size="11.5" fill="#33597a">検索するか</text>
+        <g font-size="12.5" fill="#23415a">
+          <rect x="222" y="138" width="142" height="48" rx="9" fill="#fff" stroke="#C5DAE7"/><text x="293" y="159" text-anchor="middle" font-weight="700">mem0 /</text><text x="293" y="176" text-anchor="middle" font-size="11">OpenMemory MCP</text>
+          <rect x="374" y="138" width="118" height="48" rx="9" fill="#fff" stroke="#C5DAE7"/><text x="433" y="159" text-anchor="middle" font-weight="700">Letta</text><text x="433" y="176" text-anchor="middle" font-size="10.5">自己編集メモリ</text>
+          <rect x="502" y="138" width="130" height="48" rx="9" fill="#fff" stroke="#C5DAE7"/><text x="567" y="159" text-anchor="middle" font-weight="700">agentmemory</text><text x="567" y="176" text-anchor="middle" font-size="10.5">handoffスキル</text>
+          <rect x="642" y="138" width="180" height="48" rx="9" fill="#fff" stroke="#C5DAE7"/><text x="732" y="159" text-anchor="middle" font-weight="700">ConPort / Cloudflare</text><text x="732" y="176" text-anchor="middle" font-size="10.5">memory bank・基盤</text>
+        </g>
+
+        <!-- layer 3: built-in -->
+        <rect x="20" y="214" width="820" height="84" rx="13" fill="#E0EEE3" stroke="#BFDDC7"/>
+        <rect x="20" y="214" width="186" height="84" rx="13" fill="#BFDDC7"/>
+        <text x="113" y="248" text-anchor="middle" font-size="14.5" font-weight="800" fill="#234b30">組込み層</text>
+        <text x="113" y="268" text-anchor="middle" font-size="11.5" fill="#33694a">エージェントの</text>
+        <text x="113" y="285" text-anchor="middle" font-size="11.5" fill="#33694a">標準機能</text>
+        <g font-size="12.5" fill="#234b30">
+          <rect x="222" y="232" width="180" height="48" rx="9" fill="#fff" stroke="#BFDDC7"/><text x="312" y="253" text-anchor="middle" font-weight="700">Cline new_task / smol</text><text x="312" y="270" text-anchor="middle" font-size="10.5" fill="#33694a">蒸留して窓を乗り換え</text>
+          <rect x="414" y="232" width="200" height="48" rx="9" fill="#fff" stroke="#BFDDC7"/><text x="514" y="253" text-anchor="middle" font-weight="700">Claude Code</text><text x="514" y="270" text-anchor="middle" font-size="10.5" fill="#33694a">compaction / メモリツール / CLAUDE.md</text>
+          <rect x="626" y="232" width="196" height="48" rx="9" fill="#fff" stroke="#BFDDC7"/><text x="724" y="253" text-anchor="middle" font-weight="700">長時間ハーネス</text><text x="724" y="270" text-anchor="middle" font-size="10.5" fill="#33694a">claude-progress.txt</text>
+        </g>
+      </g>
+    </svg>
+    <figcaption><b>図1</b>：上の層ほど人が読める「内容」、下の層ほどエージェントの「機構」。<b>規約層は最も可搬</b>で、ツールを変えても生き残る。</figcaption>
+  </figure>
+
+  <div class="callout c-good">
+    <div class="ttl">✔ 汎用化のカギ</div>
+    「様々なプロジェクトで使える」ことを最優先するなら、まず<strong>規約層（テキストファイルの約束事）</strong>を固めるのが正解です。これはツール非依存で git に乗り、人もレビューできます。基盤層（MCP）は<strong>後から重ねられる</strong>ので、最初から作り込まないこと。
+  </div>
+</section>
+
+<!-- ===================== 3. MEMORY BANK ===================== -->
+<section id="membank">
+  <div class="sec-head"><span class="sec-num">03</span><h2>Memory Bank（最有力の対応物）</h2></div>
+  <p class="sec-sub">Spec Kit が「仕様」を中心に置くように、Memory Bank は「プロジェクトの記憶」を構造化Markdownで外部化する方法論。</p>
+
+  <p><strong>Memory Bank</strong>（Cline 発祥、Roo Code 版もあり）は、ステートレスなエージェントを<strong>「永続的な開発パートナー」</strong>に変えるドキュメント方法論です。<code>memory-bank/</code> フォルダに、<strong>互いに積み上がる階層</strong>でMarkdownを配置します。下の図がその依存関係です。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Memory Bankのファイル階層">
+      <defs>
+        <marker id="mb" markerWidth="9" markerHeight="9" refX="4.5" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#3A6B8C"/></marker>
+      </defs>
+      <g font-family="Hiragino Sans,system-ui,sans-serif">
+        <!-- top: projectbrief -->
+        <rect x="320" y="24" width="220" height="50" rx="10" fill="#F2DBCF" stroke="#E7C3B2"/>
+        <text x="430" y="45" text-anchor="middle" font-size="13.5" font-weight="800" fill="#A84A2A" font-family="monospace">projectbrief.md</text>
+        <text x="430" y="63" text-anchor="middle" font-size="10.5" fill="#8a4427">土台 ― スコープの真実の源</text>
+
+        <!-- middle three -->
+        <rect x="40" y="120" width="240" height="52" rx="10" fill="#fff" stroke="#C5DAE7"/>
+        <text x="160" y="141" text-anchor="middle" font-size="12.5" font-weight="700" fill="#274558" font-family="monospace">productContext.md</text>
+        <text x="160" y="159" text-anchor="middle" font-size="10.5" fill="#6E6960">なぜ存在・解く問題・UX</text>
+        <rect x="310" y="120" width="240" height="52" rx="10" fill="#fff" stroke="#C5DAE7"/>
+        <text x="430" y="141" text-anchor="middle" font-size="12.5" font-weight="700" fill="#274558" font-family="monospace">systemPatterns.md</text>
+        <text x="430" y="159" text-anchor="middle" font-size="10.5" fill="#6E6960">構造・設計判断・関係</text>
+        <rect x="580" y="120" width="240" height="52" rx="10" fill="#fff" stroke="#C5DAE7"/>
+        <text x="700" y="141" text-anchor="middle" font-size="12.5" font-weight="700" fill="#274558" font-family="monospace">techContext.md</text>
+        <text x="700" y="159" text-anchor="middle" font-size="10.5" fill="#6E6960">スタック・制約・依存</text>
+
+        <!-- activeContext -->
+        <rect x="290" y="208" width="280" height="50" rx="10" fill="#DEEAF1" stroke="#C5DAE7"/>
+        <text x="430" y="229" text-anchor="middle" font-size="13" font-weight="800" fill="#23415a" font-family="monospace">activeContext.md</text>
+        <text x="430" y="247" text-anchor="middle" font-size="10.5" fill="#33597a">現在の焦点・次の一手（最頻更新）</text>
+
+        <!-- progress -->
+        <rect x="600" y="208" width="230" height="50" rx="10" fill="#E0EEE3" stroke="#BFDDC7"/>
+        <text x="715" y="229" text-anchor="middle" font-size="13" font-weight="800" fill="#234b30" font-family="monospace">progress.md</text>
+        <text x="715" y="247" text-anchor="middle" font-size="10.5" fill="#33694a">done / 残り / 既知の問題</text>
+
+        <!-- arrows -->
+        <path d="M390,76 L200,118" stroke="#3A6B8C" stroke-width="1.6" marker-end="url(#mb)"/>
+        <path d="M430,76 L430,118" stroke="#3A6B8C" stroke-width="1.6" marker-end="url(#mb)"/>
+        <path d="M470,76 L675,118" stroke="#3A6B8C" stroke-width="1.6" marker-end="url(#mb)"/>
+        <path d="M180,172 L390,206" stroke="#3A6B8C" stroke-width="1.6" marker-end="url(#mb)"/>
+        <path d="M430,172 L430,206" stroke="#3A6B8C" stroke-width="1.6" marker-end="url(#mb)"/>
+        <path d="M690,172 L500,206" stroke="#3A6B8C" stroke-width="1.6" marker-end="url(#mb)"/>
+        <path d="M570,233 L598,233" stroke="#3A6B8C" stroke-width="1.6" marker-end="url(#mb)"/>
+      </g>
+    </svg>
+    <figcaption><b>図2</b>：<code>projectbrief</code> が全てを形づくり、3つの文脈ファイルを経て <code>activeContext</code>→<code>progress</code> へ。<b>下流ほど頻繁に更新</b>される。</figcaption>
+  </figure>
+
+  <h3>仕組みと運用</h3>
+  <p>運用ルールは <code>.clinerules/memory-bank.md</code>（カスタム指示）に書きます。中心となる鉄則は<strong>「毎タスク開始時に全ファイルを必ず読む（任意ではない）」</strong>。主なコマンドは次の3つです。</p>
+  <ul class="clean">
+    <li><strong>initialize memory bank</strong> ― 新規プロジェクトで初期構造を作る。</li>
+    <li><strong>update memory bank</strong> ― 全ファイルを見直して更新（特に <code>activeContext</code> と <code>progress</code>）。</li>
+    <li><strong>follow your custom instructions</strong> ― Memory Bank を読み、中断地点から再開する。</li>
+  </ul>
+  <p>窓が埋まってきたら <code>/newtask</code> や <code>/smol</code> で会話を<strong>「plan / 済んだ作業 / 関連ファイル / 次の手」に蒸留</strong>し、クリーンな窓で続行します。</p>
+
+  <div class="callout c-key">
+    <div class="ttl">◆ あなたの目的に直結する最大の利点：ツール非依存</div>
+    Cline 公式が明言する通り、Memory Bank は<strong>「ドキュメントを読めるAIなら何でも動く」</strong>方法論です。コマンド名こそ違えど、<strong>Claude Code・Cursor・Roo Code などにそのまま流用</strong>できます。README との違いは、<strong>頻繁に変わる「現在の文脈」と「進捗」を専用ファイルで追跡</strong>する点にあります。
+  </div>
+</section>
+
+<!-- ===================== 4. TOOLS ===================== -->
+<section id="tools">
+  <div class="sec-head"><span class="sec-num">04</span><h2>主要ツールキット比較</h2></div>
+  <p class="sec-sub">2026年6月時点で「引き継ぎ」に使える代表的な選択肢。形態と向き不向きで選ぶ。</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>ツール / 方式</th><th>形態</th><th>特徴</th><th>向く場面</th></tr></thead>
+      <tbody>
+        <tr><td class="method">Memory Bank<br>(Cline / Roo)</td><td>リポジトリ内<br>Markdown規約</td><td>ツール非依存・git管理・透明・無料。最もシンプルで移植しやすい。</td><td><span class="pill p-low">まずここから</span> 横断・可搬重視</td></tr>
+        <tr><td class="method">agentmemory</td><td>MCP（自動導入）</td><td><code>handoff</code> 含む8スキル、多数のMCPツール。Cline/Claude Code に自動組込。ベンチ上位を自称。</td><td><span class="pill p-mid">自動化</span> 引き継ぎをスキル化</td></tr>
+        <tr><td class="method">mem0 /<br>OpenMemory MCP</td><td>メモリ基盤<br>(ローカル/クラウド)</td><td><strong>複数ツール横断</strong>で同一記憶を共有。多スコープ・多信号検索。ローカル版は5分で導入。</td><td><span class="pill p-mid">横断共有</span> Cursor↔Claude↔Windsurf</td></tr>
+        <tr><td class="method">Letta<br>(旧 MemGPT)</td><td>自己編集<br>メモリ基盤</td><td>階層メモリと自己編集。2026年3月に「Letta Code」（メモリ第一のコーディングエージェント）。</td><td><span class="pill p-high">高度</span> 自律エージェント</td></tr>
+        <tr><td class="method">AGENTS.md</td><td>規約標準</td><td>「今守るべきルール」を集約するツール横断の標準。多数のリポジトリで採用。</td><td><span class="pill p-low">併用必須</span> どの構成でも土台に</td></tr>
+        <tr><td class="method">ADR / AgDR</td><td>決定記録</td><td>決定と「なぜ」を追跡可能に残す。AgDR は AIの決定にも同じ厳密さを与える拡張。</td><td><span class="pill p-low">設計判断</span> 蒸し返し防止</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout c-info">
+    <div class="ttl">▶ 「基盤層」は成熟・production化が進行中</div>
+    メモリMCPは生態系として急成長しています。Mem0 だけで <strong>21のフレームワーク・20のベクタストア</strong>に対応し、Cloudflare も2026年4月に「Agent Memory」をプライベートβで発表。<strong>記憶は実験的機能から本番インフラへ</strong>移行しつつあります。一方で、単一ツールに縛られるメモリ層は普及しない、という教訓も共有されています。
+  </div>
+</section>
+
+<!-- ===================== 5. MEMORY TYPES ===================== -->
+<section id="types">
+  <div class="sec-head"><span class="sec-num">05</span><h2>設計の核：メモリの3種類</h2></div>
+  <p class="sec-sub">「何を引き継ぐか」は3種類に分かれる。コーディングでは特に procedural（手続き的記憶）が効く。</p>
+
+  <p>優れた引き継ぎ基盤を設計するには、記憶を<strong>3種類</strong>に分けて考えるのが定石です。多くのシステムは episodic と semantic の2つに注力しがちですが、本番のコーディングエージェントには<strong>第3の procedural（手続き的記憶）が不可欠</strong>だと指摘されています。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="メモリの3種類">
+      <g font-family="Hiragino Sans,system-ui,sans-serif">
+        <!-- episodic -->
+        <rect x="20" y="30" width="262" height="180" rx="13" fill="#DEEAF1" stroke="#C5DAE7"/>
+        <text x="151" y="64" text-anchor="middle" font-size="15" font-weight="800" fill="#23415a">Episodic</text>
+        <text x="151" y="84" text-anchor="middle" font-size="12" fill="#33597a">何が起きたか</text>
+        <line x1="48" y1="100" x2="254" y2="100" stroke="#C5DAE7"/>
+        <text x="151" y="124" text-anchor="middle" font-size="11.5" fill="#274558">過去のセッションの出来事・</text>
+        <text x="151" y="142" text-anchor="middle" font-size="11.5" fill="#274558">変更履歴・経緯</text>
+        <text x="151" y="174" text-anchor="middle" font-size="11" fill="#9B958B">例：progress.md /</text>
+        <text x="151" y="190" text-anchor="middle" font-size="11" fill="#9B958B">git 履歴・進捗ログ</text>
+
+        <!-- semantic -->
+        <rect x="299" y="30" width="262" height="180" rx="13" fill="#FBF8F3" stroke="#D6CCBD"/>
+        <text x="430" y="64" text-anchor="middle" font-size="15" font-weight="800" fill="#5a4d36">Semantic</text>
+        <text x="430" y="84" text-anchor="middle" font-size="12" fill="#6E6960">何を知っているか</text>
+        <line x1="327" y1="100" x2="533" y2="100" stroke="#D6CCBD"/>
+        <text x="430" y="124" text-anchor="middle" font-size="11.5" fill="#3a3a3a">事実・知識・要件・</text>
+        <text x="430" y="142" text-anchor="middle" font-size="11.5" fill="#3a3a3a">アーキテクチャの理解</text>
+        <text x="430" y="174" text-anchor="middle" font-size="11" fill="#9B958B">例：projectbrief /</text>
+        <text x="430" y="190" text-anchor="middle" font-size="11" fill="#9B958B">systemPatterns・ADR</text>
+
+        <!-- procedural (highlighted) -->
+        <rect x="578" y="20" width="262" height="200" rx="13" fill="#F2DBCF" stroke="#C15F3C" stroke-width="2"/>
+        <text x="709" y="42" text-anchor="middle" font-size="10.5" font-weight="800" fill="#A84A2A">★ コーディングで特に重要</text>
+        <text x="709" y="68" text-anchor="middle" font-size="15" font-weight="800" fill="#A84A2A">Procedural</text>
+        <text x="709" y="88" text-anchor="middle" font-size="12" fill="#8a4427">やり方・規約</text>
+        <line x1="606" y1="102" x2="812" y2="102" stroke="#E7C3B2"/>
+        <text x="709" y="126" text-anchor="middle" font-size="11.5" fill="#5e2a17">学習したワークフロー・</text>
+        <text x="709" y="144" text-anchor="middle" font-size="11.5" fill="#5e2a17">コード規約・ツール使用の癖</text>
+        <text x="709" y="172" text-anchor="middle" font-size="11" fill="#8a4427">例：PRの作り方、マージ前の</text>
+        <text x="709" y="188" text-anchor="middle" font-size="11" fill="#8a4427">テストコマンド、レビュー規約</text>
+        <text x="709" y="206" text-anchor="middle" font-size="11" fill="#8a4427">→ AGENTS.md の領域</text>
+      </g>
+    </svg>
+    <figcaption><b>図3</b>：<b>procedural</b> は「チームのやり方」を一貫適用させる記憶。単なる好みや事実ではなく、エージェントが毎回従うべき“手続き”。まだ専用ツールは発展途上。</figcaption>
+  </figure>
+</section>
+
+<!-- ===================== 6. SCOPE & RETRIEVAL ===================== -->
+<section id="scope">
+  <div class="sec-head"><span class="sec-num">06</span><h2>マルチスコープと多信号検索</h2></div>
+  <p class="sec-sub">記憶を「誰の・どの範囲か」で仕分け、検索は複数の信号を融合する ― これが本番品質の2大設計。</p>
+
+  <p>記憶基盤を自作・選定するなら、<strong>スコープ</strong>と<strong>検索</strong>の設計が肝心です。Mem0 が確立し定着した<strong>4スコープモデル</strong>（<code>user / agent / session / org</code>）は、横断利用と混線防止を両立させます。検索側は単一のベクトル類似だけに頼らず、<strong>意味・キーワード・エンティティを並列に評価して融合</strong>するのが2026年の標準です。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="マルチスコープと多信号検索">
+      <defs>
+        <marker id="rf" markerWidth="9" markerHeight="9" refX="4.5" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#6A5099"/></marker>
+      </defs>
+      <g font-family="Hiragino Sans,system-ui,sans-serif">
+        <!-- Panel A: scopes (nested) -->
+        <text x="40" y="36" font-size="13" font-weight="800" fill="#A84A2A">A. マルチスコープ（記憶の仕分け）</text>
+        <rect x="40" y="48" width="360" height="180" rx="10" fill="#F2DBCF" stroke="#E7C3B2"/>
+        <text x="58" y="68" font-size="11.5" font-weight="700" fill="#8a4427" font-family="monospace">org_id ― 組織で共有</text>
+        <rect x="64" y="78" width="312" height="138" rx="9" fill="#fff" stroke="#E7C3B2"/>
+        <text x="80" y="98" font-size="11.5" font-weight="700" fill="#274558" font-family="monospace">user_id ― 全セッションで永続</text>
+        <rect x="86" y="108" width="268" height="98" rx="8" fill="#DEEAF1" stroke="#C5DAE7"/>
+        <text x="102" y="128" font-size="11.5" font-weight="700" fill="#23415a" font-family="monospace">agent_id ― 特定エージェント</text>
+        <rect x="108" y="138" width="224" height="58" rx="7" fill="#E0EEE3" stroke="#BFDDC7"/>
+        <text x="124" y="160" font-size="11.5" font-weight="700" fill="#234b30" font-family="monospace">session_id ― 1セッション</text>
+        <text x="124" y="180" font-size="10" fill="#33694a">検索時に自動でマージ・ランク付け</text>
+
+        <!-- Panel B: retrieval fusion -->
+        <text x="450" y="36" font-size="13" font-weight="800" fill="#4a3a72">B. 多信号検索（融合スコア）</text>
+        <rect x="450" y="50" width="160" height="34" rx="8" fill="#211F1B"/>
+        <text x="530" y="72" text-anchor="middle" font-size="12" font-weight="700" fill="#E6BBA6">クエリ</text>
+        <rect x="450" y="104" width="160" height="30" rx="7" fill="#fff" stroke="#cfc1ea"/><text x="530" y="124" text-anchor="middle" font-size="11.5" fill="#4a3a72">① 意味（ベクトル）</text>
+        <rect x="450" y="140" width="160" height="30" rx="7" fill="#fff" stroke="#cfc1ea"/><text x="530" y="160" text-anchor="middle" font-size="11.5" fill="#4a3a72">② キーワード(BM25)</text>
+        <rect x="450" y="176" width="160" height="30" rx="7" fill="#fff" stroke="#cfc1ea"/><text x="530" y="196" text-anchor="middle" font-size="11.5" fill="#4a3a72">③ エンティティ照合</text>
+        <path d="M530,84 L530,102" stroke="#6A5099" stroke-width="1.6" marker-end="url(#rf)"/>
+        <rect x="668" y="104" width="166" height="102" rx="10" fill="#E8E1F2" stroke="#cfc1ea"/>
+        <text x="751" y="146" text-anchor="middle" font-size="13" font-weight="800" fill="#4a3a72">融合スコア</text>
+        <text x="751" y="168" text-anchor="middle" font-size="10.5" fill="#5a4d7a">3信号を正規化し統合</text>
+        <text x="751" y="186" text-anchor="middle" font-size="10.5" fill="#5a4d7a">→ 上位だけを窓に注入</text>
+        <path d="M610,119 L666,140" stroke="#6A5099" stroke-width="1.5" marker-end="url(#rf)"/>
+        <path d="M610,155 L666,155" stroke="#6A5099" stroke-width="1.5" marker-end="url(#rf)"/>
+        <path d="M610,191 L666,170" stroke="#6A5099" stroke-width="1.5" marker-end="url(#rf)"/>
+      </g>
+    </svg>
+    <figcaption><b>図4</b>：スコープで「引き出す範囲」を制御し、多信号融合で「精度」を上げる。<b>少数の高関連だけを窓に入れる</b>ことでトークンも節約（全文脈の約1/4という報告も）。</figcaption>
+  </figure>
+
+  <div class="callout c-info">
+    <div class="ttl">▶ 本番運用で効く小技</div>
+    記憶の書き込みは<strong>非同期</strong>（応答を遅らせない）、検索後に<strong>リランク</strong>（順序を整える）、<strong>メタデータでフィルタ</strong>（プロジェクトや期間で絞る）。これらが「実験」と「本番」を分ける実務的な差です。
+  </div>
+</section>
+
+<!-- ===================== 7. ARCHITECTURE ===================== -->
+<section id="arch">
+  <div class="sec-head"><span class="sec-num">07</span><h2>推奨アーキテクチャ：二段構え</h2></div>
+  <p class="sec-sub">汎用・横断で自作するなら、「ファイル規約を土台に、必要に応じてMCPを重ねる」二段構えが現実解。</p>
+
+  <p>「様々なプロジェクトで使える」を最優先するなら、<strong>可搬で透明なファイル規約を土台</strong>に置き、<strong>検索・自動化が要る段階でMCPメモリ層を重ねる</strong>のが2026年6月時点の最適解です。役割が直交するので、<span class="em-ink">小さく始めて後から足せる</span>のが利点です。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="二段構えの推奨アーキテクチャ">
+      <g font-family="Hiragino Sans,system-ui,sans-serif">
+        <!-- Tier 2 (optional, top) -->
+        <rect x="20" y="24" width="820" height="104" rx="13" fill="#E8E1F2" stroke="#cfc1ea" stroke-dasharray="7 5"/>
+        <rect x="36" y="36" width="120" height="26" rx="13" fill="#6A5099"/><text x="96" y="54" text-anchor="middle" font-size="11" font-weight="800" fill="#fff">任意・後から</text>
+        <text x="176" y="55" font-size="14.5" font-weight="800" fill="#4a3a72">② MCPメモリ層（OpenMemory 等）</text>
+        <g font-size="11.5" fill="#4a3a72">
+          <rect x="176" y="72" width="200" height="42" rx="8" fill="#fff" stroke="#cfc1ea"/><text x="276" y="89" text-anchor="middle" font-weight="700">複数ツール横断で共有</text><text x="276" y="105" text-anchor="middle" font-size="10.5">Cursor↔Claude↔Windsurf</text>
+          <rect x="388" y="72" width="200" height="42" rx="8" fill="#fff" stroke="#cfc1ea"/><text x="488" y="89" text-anchor="middle" font-weight="700">自動抽出・多信号検索</text><text x="488" y="105" text-anchor="middle" font-size="10.5">スコープ・リランク</text>
+          <rect x="600" y="72" width="224" height="42" rx="8" fill="#fff" stroke="#cfc1ea"/><text x="712" y="89" text-anchor="middle" font-weight="700">ローカル/クラウド選択</text><text x="712" y="105" text-anchor="middle" font-size="10.5">privacy・production対応</text>
+        </g>
+
+        <text x="430" y="148" text-anchor="middle" font-size="11" fill="#6E6960">▲ 横断共有・検索が要るとき重ねる　／　▼ まずは下だけで成立</text>
+
+        <!-- Tier 1 (base, always) -->
+        <rect x="20" y="160" width="820" height="150" rx="13" fill="#E0EEE3" stroke="#BFDDC7"/>
+        <rect x="36" y="172" width="120" height="26" rx="13" fill="#3F7D54"/><text x="96" y="190" text-anchor="middle" font-size="11" font-weight="800" fill="#fff">土台・必須</text>
+        <text x="176" y="191" font-size="14.5" font-weight="800" fill="#234b30">① リポジトリ内ファイル規約（git管理・ツール非依存）</text>
+        <g font-size="11" fill="#234b30">
+          <rect x="36" y="210" width="150" height="86" rx="8" fill="#fff" stroke="#BFDDC7"/><text x="111" y="231" text-anchor="middle" font-weight="700" font-family="monospace" font-size="11.5">project-brief.md</text><text x="111" y="249" text-anchor="middle" font-size="10">目的・スコープ</text><text x="111" y="270" text-anchor="middle" font-family="monospace" font-size="11.5">architecture.md</text><text x="111" y="287" text-anchor="middle" font-size="10">構造・パターン</text>
+          <rect x="198" y="210" width="150" height="86" rx="8" fill="#fff" stroke="#BFDDC7"/><text x="273" y="231" text-anchor="middle" font-weight="700" font-family="monospace" font-size="11.5">decisions/</text><text x="273" y="249" text-anchor="middle" font-size="10">ADR追記式(AgDR)</text><text x="273" y="270" text-anchor="middle" font-size="10.5">「なぜ」を蓄積し</text><text x="273" y="285" text-anchor="middle" font-size="10.5">蒸し返しを防ぐ</text>
+          <rect x="360" y="210" width="150" height="86" rx="8" fill="#fff" stroke="#BFDDC7"/><text x="435" y="231" text-anchor="middle" font-weight="700" font-family="monospace" font-size="11.5">active-context.md</text><text x="435" y="249" text-anchor="middle" font-size="10">現在地・次の手</text><text x="435" y="270" text-anchor="middle" font-family="monospace" font-size="11.5">progress.md</text><text x="435" y="287" text-anchor="middle" font-size="10">done/残り/問題</text>
+          <rect x="522" y="210" width="302" height="86" rx="8" fill="#F2DBCF" stroke="#E7C3B2"/><text x="673" y="231" text-anchor="middle" font-weight="800" font-family="monospace" font-size="12" fill="#A84A2A">AGENTS.md ＝ 運用フック</text><text x="673" y="252" text-anchor="middle" font-size="10.5" fill="#5e2a17">「起動時に全引き継ぎファイルを読む」</text><text x="673" y="269" text-anchor="middle" font-size="10.5" fill="#5e2a17">「重要決定は即ADR追記」「区切りで蒸留」</text><text x="673" y="286" text-anchor="middle" font-size="10.5" fill="#5e2a17">hooks / skill で自動化（Spec Kit的に駆動）</text>
+        </g>
+      </g>
+    </svg>
+    <figcaption><b>図5</b>：土台＝<b>可搬・透明・git でレビュー可能</b>。上乗せ＝<b>検索と自動化</b>。AGENTS.md に運用ルールを書くことで、ファイル規約が“コマンドで動く仕組み”になる。</figcaption>
+  </figure>
+
+  <div class="callout c-good">
+    <div class="ttl">✔ なぜこの二段構えなのか</div>
+    <strong>ファイル層</strong>はツールを変えても生き残り、人もエージェントも読め、git 履歴で監査できます。<strong>MCP層</strong>は「複数ツールで同じ記憶を共有したい」「自動抽出・検索が欲しい」段階で初めて効きます。<strong>最初からMCPを作り込まない</strong>のが、汎用性とコストの両立の鍵です。
+  </div>
+</section>
+
+<!-- ===================== 8. LIFECYCLE ===================== -->
+<section id="lifecycle">
+  <div class="sec-head"><span class="sec-num">08</span><h2>セッションのライフサイクル</h2></div>
+  <p class="sec-sub">仕組みを「運用ルール」に落とすと、毎セッションがこの循環になる。AGENTS.md とフックで自動化する。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 290" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="セッションのライフサイクル">
+      <defs>
+        <marker id="lc" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#C15F3C"/></marker>
+      </defs>
+      <g font-family="Hiragino Sans,system-ui,sans-serif">
+        <!-- step 1 -->
+        <rect x="40" y="40" width="200" height="74" rx="11" fill="#DEEAF1" stroke="#C5DAE7"/>
+        <circle cx="64" cy="64" r="13" fill="#3A6B8C"/><text x="64" y="69" text-anchor="middle" font-size="13" font-weight="800" fill="#fff">1</text>
+        <text x="84" y="64" font-size="13" font-weight="800" fill="#274558">開始：読み戻す</text>
+        <text x="56" y="90" font-size="10.5" fill="#33597a">引き継ぎファイルを全て読み、</text>
+        <text x="56" y="105" font-size="10.5" fill="#33597a">progress とコードの乖離を検証</text>
+        <!-- step 2 -->
+        <rect x="330" y="40" width="200" height="74" rx="11" fill="#E0EEE3" stroke="#BFDDC7"/>
+        <circle cx="354" cy="64" r="13" fill="#3F7D54"/><text x="354" y="69" text-anchor="middle" font-size="13" font-weight="800" fill="#fff">2</text>
+        <text x="374" y="64" font-size="13" font-weight="800" fill="#234b30">作業：1単位ずつ</text>
+        <text x="346" y="90" font-size="10.5" fill="#33694a">焦点を絞って実装・検証。</text>
+        <text x="346" y="105" font-size="10.5" fill="#33694a">重要決定は即ADRへ追記</text>
+        <!-- step 3 -->
+        <rect x="620" y="40" width="200" height="74" rx="11" fill="#F2DBCF" stroke="#E7C3B2"/>
+        <circle cx="644" cy="64" r="13" fill="#C15F3C"/><text x="644" y="69" text-anchor="middle" font-size="13" font-weight="800" fill="#fff">3</text>
+        <text x="664" y="64" font-size="13" font-weight="800" fill="#A84A2A">区切り：蒸留</text>
+        <text x="636" y="90" font-size="10.5" fill="#8a4427">窓が埋まる/節目で「plan・</text>
+        <text x="636" y="105" font-size="10.5" fill="#8a4427">done・files・next」に要約</text>
+        <!-- step 4 -->
+        <rect x="330" y="176" width="200" height="74" rx="11" fill="#FBF8F3" stroke="#D6CCBD"/>
+        <circle cx="354" cy="200" r="13" fill="#6E6960"/><text x="354" y="205" text-anchor="middle" font-size="13" font-weight="800" fill="#fff">4</text>
+        <text x="374" y="200" font-size="13" font-weight="800" fill="#3a3a3a">記録：書き戻す</text>
+        <text x="346" y="226" font-size="10.5" fill="#6E6960">activeContext / progress を更新し、</text>
+        <text x="346" y="241" font-size="10.5" fill="#6E6960">説明的メッセージで git commit</text>
+
+        <!-- arrows -->
+        <path d="M240,77 L328,77" stroke="#C15F3C" stroke-width="2.2" marker-end="url(#lc)"/>
+        <path d="M530,77 L618,77" stroke="#C15F3C" stroke-width="2.2" marker-end="url(#lc)"/>
+        <path d="M720,114 L520,174" stroke="#C15F3C" stroke-width="2.2" marker-end="url(#lc)"/>
+        <!-- loop back to step1 (new session) -->
+        <path d="M330,213 L150,213 L140,116" stroke="#C15F3C" stroke-width="2.2" stroke-dasharray="6 4" marker-end="url(#lc)" fill="none"/>
+        <text x="150" y="170" font-size="10.5" font-weight="700" fill="#A84A2A">新しい窓で①へ</text>
+        <text x="150" y="186" font-size="10" fill="#8a4427">（記憶はファイルに残る）</text>
+      </g>
+    </svg>
+    <figcaption><b>図6</b>：「開始＝読む／区切り＝蒸留して書く」を徹底すれば、何セッションまたいでも現在地を失わない。これを <code>AGENTS.md</code>・hook・skill に固定して<b>毎回自動実行</b>させる。</figcaption>
+  </figure>
+
+  <div class="callout c-warn">
+    <div class="ttl">⚠ 自動化のポイント</div>
+    人間が毎回手で指示すると形骸化します。Claude Code なら<strong>hook</strong>（決定的に必ず実行）や<strong>skill</strong>（<code>/handoff</code> のように呼ぶ）、Cline なら <code>.clinerules</code> に固定するのが堅実。「<strong>より良いセッションを、より良い“仕組み”に変える</strong>」のが要点です。
+  </div>
+</section>
+
+<!-- ===================== 9. OPEN PROBLEMS ===================== -->
+<section id="open">
+  <div class="sec-head"><span class="sec-num">09</span><h2>未解決問題と注意点</h2></div>
+  <p class="sec-sub">基盤を自作するなら、ここを運用ルールで補う必要がある。2026年でもまだ“開いた”問題。</p>
+
+  <p>メモリ分野は成熟しましたが、残る難問は<strong>「具体的で境界は明確だが、根本解決には至っていない」</strong>ものばかりです。汎用基盤を作る側は、これらを認識して運用で補う必要があります。</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>問題</th><th>何が起きるか</th><th>運用での補い方</th></tr></thead>
+      <tbody>
+        <tr><td class="method">陳腐化<br>(staleness)</td><td>よく参照される記憶が、状況変化後に<strong>「自信満々に間違い」</strong>になる（例：転職後も古い所属を返す）。</td><td>タイムスタンプ・出典を必ず残し、定期的に <code>update</code>。事実には鮮度を併記。</td></tr>
+        <tr><td class="method">進化 vs 上書き</td><td>多くのシステムは変化を<strong>「置換」</strong>として扱うが、本来は<strong>「変遷」</strong>として理解すべき。</td><td>ADR を<strong>追記式</strong>にし、過去の決定を消さず「superseded」で残す。</td></tr>
+        <tr><td class="method">時間的抽象化</td><td>文脈が大規模化するほど時間推論が崩れる（ベンチでも最難関カテゴリ）。</td><td>進捗は時系列で、節目に要約。古い詳細は畳んで概要だけ残す。</td></tr>
+        <tr><td class="method">同一性の解決</td><td><code>user_id</code> 前提が崩れる（匿名・複数端末・混在認証）。</td><td>スコープIDをアプリ側の認証に紐づけ、メモリ層で生成しない。</td></tr>
+        <tr><td class="method">プライバシー/同意</td><td>誰が記憶を閲覧・保持・削除できるかは<strong>アプリ層の設計</strong>事項。</td><td>保持期間・削除手段・閲覧範囲を最初から決め、ローカル保存も選択肢に。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout c-warn">
+    <div class="ttl">⚠ ベンチマーク値の扱い</div>
+    各ツールの性能（LoCoMo / LongMemEval / BEAM などのスコア）や順位には<strong>自己申告を含み、用いるベンチも異なります</strong>。Mem0 自身も推奨する通り、基盤を確定する前に<strong>自分のワークロードで評価フレームを回す</strong>のが安全です。トークン効率（1クエリあたりの消費）も本番のコストに直結するため要確認です。
+  </div>
+</section>
+
+<!-- ===================== 10. CHOOSE ===================== -->
+<section id="choose">
+  <div class="sec-head"><span class="sec-num">10</span><h2>使い分け・出発点</h2></div>
+  <p class="sec-sub">「小さく始め、必要になったら足す」。状況別の最初の一歩。</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>あなたの状況</th><th>最初の一歩</th><th>理由</th></tr></thead>
+      <tbody>
+        <tr><td>まず1プロジェクトで手堅く</td><td class="method">Memory Bank をコピー</td><td>最速・無料・ツール非依存。git に乗り、すぐ使える。</td></tr>
+        <tr><td>複数ツール横断で記憶共有</td><td class="method">OpenMemory MCP（ローカル）</td><td>Cursor↔Claude↔Windsurf を跨いで同一記憶。約5分で導入。</td></tr>
+        <tr><td>Claude Code 中心</td><td class="method">CLAUDE.md / AGENTS.md ＋ progress ＋ skill/hook</td><td>公式路線（構造化ノート・長時間ハーネス）と整合し自動化しやすい。</td></tr>
+        <tr><td>引き継ぎをスキルとして自動化</td><td class="method">agentmemory の handoff</td><td>Cline / Claude Code に自動組込でき、呼ぶだけで蒸留・引き継ぎ。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout c-key">
+    <div class="ttl">◆ 通底する4原則</div>
+    <strong>①記憶は窓の外（ファイル）に置く</strong> ― ツールを変えても生き残る。<strong>②開始時に必ず読む</strong> ― 任意にしない。<strong>③区切りで蒸留して書き戻す</strong> ―「plan/done/files/next」。<strong>④決定は“なぜ”ごと残す</strong> ― ADRで蒸し返しを防ぐ。ツールはこの4つの自動化手段に過ぎません。
+  </div>
+</section>
+
+<!-- ===================== 11. REFS ===================== -->
+<section id="refs">
+  <div class="sec-head"><span class="sec-num">11</span><h2>出典</h2></div>
+  <p class="sec-sub">一次情報（公式ドキュメント・調査レポート）を主軸に作成。</p>
+  <ul class="clean">
+    <li><a href="https://docs.cline.bot/features/memory-bank">Memory Bank ― Cline 公式ドキュメント</a>：ファイル階層・コマンド・運用・ツール非依存性の原典。</li>
+    <li><a href="https://cline.bot/blog/memory-bank-how-to-make-cline-an-ai-agent-that-never-forgets">Memory Bank: How to Make Cline an AI Agent That Never Forgets（Cline Blog）</a></li>
+    <li><a href="https://mem0.ai/blog/state-of-ai-agent-memory-2026">State of AI Agent Memory 2026: Benchmarks, Architectures & Production Gaps（Mem0）</a>：メモリ3種・マルチスコープ・多信号検索・未解決問題・ベンチマーク。</li>
+    <li><a href="https://mem0.ai/openmemory">OpenMemory ― AI Memory MCP Server（Mem0）</a>：ローカルファースト・ツール横断のMCPメモリ。</li>
+    <li><a href="https://github.com/rohitg00/agentmemory">agentmemory（GitHub）</a>：handoff 含むスキル群・MCPツール・コーディングエージェント向け永続メモリ。</li>
+    <li><a href="https://github.com/me2resh/agent-decision-record">Agent Decision Records (AgDR)（GitHub）</a>／<a href="https://ai.gopubby.com/agents-md-is-the-ew-architecture-decision-record-adr-3cfb6bdd6f2c">AGENTS.md vs ADR（AI Advances）</a>：規約層の標準と決定記録。</li>
+    <li>関連（Anthropic 公式・前回ガイド）：<a href="https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents">Effective harnesses for long-running agents</a>／<a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents">Effective context engineering for AI agents</a>。</li>
+  </ul>
+  <p class="src">※ メモリ分野は変化が速く、ツール・ベンチ値・日付には自己申告を含みます。基盤選定の前に、自分のワークロードでの検証を推奨します。</p>
+</section>
+
+<p style="text-align:center; color:var(--faint); font-size:13px; margin:40px 0 10px">― 以上 ―</p>
+
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <h4>このドキュメントについて</h4>
+    <p style="color:#C9C2B6">2026年6月時点の公開情報（Cline 公式ドキュメント、Mem0「State of AI Agent Memory 2026」、各リポジトリ・標準）に基づき作成。メモリ分野は変化が速く、ツールやベンチマーク値・日付には自己申告を含むため、基盤選定の前に自分のワークロードで検証することを推奨します。</p>
+  </div>
+</footer>
+
+</body>
+</html>

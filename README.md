@@ -3,7 +3,7 @@
 LLM・AIエージェントを活用したコーディング開発手法を、Anthropic 公式情報を中心に
 体系的にまとめた単一ページのレポート（図解付き・外部依存なしの静的 HTML）です。
 
-🔗 **公開URL（Pages 有効化後）:** `https://<username>.github.io/<repo>/`
+🔗 **公開URL（Pages 有効化後）:** `https://hiroxtai.github.io/agentic-coding/`
 
 ---
 
