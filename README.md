@@ -1,7 +1,7 @@
-# Agentic Coding 開発手法ガイド（2026年6月）
+# Agentic Coding ナレッジベース（2026年6月）
 
-LLM・AIエージェントを活用したコーディング開発手法を、Anthropic 公式情報を中心に
-体系的にまとめた単一ページのレポート（図解付き・外部依存なしの静的 HTML）です。
+LLM・AIエージェントを活用したコーディング開発手法の調査資料集です（図解付き・外部依存なしの
+静的 HTML 5本 ＋ 構築キット2式）。`index.html` がハブページで、各資料への入口になっています。
 
 🔗 **公開URL（Pages 有効化後）:** `https://hiroxtai.github.io/agentic-coding/`
 
@@ -51,12 +51,17 @@ git push
 
 ## ファイル構成
 
-| ファイル | 役割 |
+| ファイル / フォルダ | 役割 |
 | --- | --- |
-| `index.html` | レポート本体（単一ファイル・外部依存なし） |
-| `.nojekyll` | GitHub Pages の Jekyll 処理を無効化（全ファイルをそのまま配信） |
-| `.gitignore` | OS・エディタの不要ファイルを除外 |
-| `README.md` | このファイル |
+| `index.html` | **ハブページ**（5資料の一覧・入口） |
+| `coding-agent-methods-2026.html` | ① コーディングエージェント開発手法ガイド（総論） |
+| `github-spec-kit-guide.html` | ② GitHub Spec Kit 詳解（仕様駆動） |
+| `session-handoff-guide.html` | ③ セッション間引き継ぎ 詳解（汎用） |
+| `github-copilot-handoff-guide.html` | ④ GitHub Copilot 引き継ぎ 詳解 |
+| `unified-workflow-guide.html` | ⑤ 統合ワークフロー構築手順書（集大成） |
+| `spec-driven-handoff-kit/` | 統合構成の実ファイル一式（Copilot / Claude / Codex 横断）。手順は `SETUP.md` |
+| `copilot-handoff-starter/` | Copilot 向け引き継ぎスターターキット。手順は `SETUP.md` |
+| `.nojekyll` / `.gitignore` / `README.md` | Pages 設定 ／ 除外 ／ このファイル |
 
 ---
 

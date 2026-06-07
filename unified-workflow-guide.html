@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>統合エージェント開発ワークフロー 構築手順書（2026年6月）</title>
+<style>
+  :root{
+    --bg:#F4EFE7; --surface:#FFFFFF; --surface-2:#FBF8F3;
+    --ink:#1C1B18; --muted:#6E6960; --faint:#9B958B;
+    --accent:#C15F3C; --accent-deep:#A84A2A; --accent-soft:#F2DBCF;
+    --line:#E5DDD1; --line-strong:#D6CCBD;
+    --good:#3F7D54; --good-soft:#E0EEE3;
+    --warn:#B8860B; --warn-soft:#F6ECCF;
+    --info:#3A6B8C; --info-soft:#DEEAF1;
+    --violet:#6A5099; --violet-soft:#E8E1F2;
+    --shadow:0 1px 2px rgba(40,30,20,.04),0 8px 24px rgba(40,30,20,.06);
+    --radius:16px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    line-height:1.85; font-size:16.5px; letter-spacing:.01em;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:980px; margin:0 auto; padding:0 22px}
+  h1,h2,h3,h4{line-height:1.4; letter-spacing:.005em}
+
+  .hero{
+    background:
+      radial-gradient(110% 130% at 92% -10%, rgba(63,125,84,.20), transparent 55%),
+      radial-gradient(120% 140% at 50% -20%, rgba(106,80,153,.16), transparent 55%),
+      radial-gradient(110% 130% at -10% 0%, rgba(193,95,60,.18), transparent 50%),
+      linear-gradient(180deg,#20231F 0%, #272A26 100%);
+    color:#F4EFE7; padding:60px 0 52px; position:relative; overflow:hidden;
+  }
+  .hero .wrap{position:relative; z-index:2}
+  .kicker{display:inline-block; font-size:12.5px; letter-spacing:.16em; text-transform:uppercase; color:#E6BBA6; border:1px solid rgba(230,187,166,.4); padding:5px 12px; border-radius:999px; margin-bottom:22px}
+  .hero h1{font-size:34px; margin:0 0 16px; font-weight:800; letter-spacing:0}
+  .hero h1 .em{color:#E89B79}
+  .hero p.lead{font-size:17px; color:#D9D2C7; max-width:790px; margin:0 0 24px}
+  .hero .meta{display:flex; flex-wrap:wrap; gap:10px 22px; font-size:13.5px; color:#B2B6AE}
+  .hero .meta b{color:#E6BBA6; font-weight:600}
+  .hero-figs{display:flex; flex-wrap:wrap; gap:10px; margin-top:28px}
+  .chip{background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); padding:7px 14px; border-radius:999px; font-size:13px; color:#EFE8DC}
+  .chip b{color:#E89B79; font-weight:700}
+
+  section{padding:44px 0 8px}
+  .sec-head{display:flex; align-items:baseline; gap:14px; margin-bottom:8px}
+  .sec-num{font-size:13px; font-weight:800; color:var(--accent); letter-spacing:.1em; border:1.5px solid var(--accent-soft); background:var(--surface); border-radius:8px; padding:3px 9px; white-space:nowrap}
+  h2{font-size:25px; margin:0; font-weight:800}
+  .sec-sub{color:var(--muted); font-size:15.5px; margin:6px 0 22px}
+  h3{font-size:18.5px; margin:28px 0 10px; font-weight:700}
+  p{margin:0 0 16px}
+  a{color:var(--accent-deep); text-decoration:none; border-bottom:1px solid var(--accent-soft)}
+  a:hover{border-bottom-color:var(--accent)}
+  strong{font-weight:700}
+  .em-ink{color:var(--accent-deep); font-weight:700}
+
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:22px 26px; box-shadow:var(--shadow); margin:20px 0}
+  .callout{border-radius:14px; padding:16px 20px; margin:20px 0; font-size:15.5px; border:1px solid}
+  .callout .ttl{font-weight:800; font-size:14px; letter-spacing:.04em; margin-bottom:6px; display:flex; align-items:center; gap:8px}
+  .c-key{background:var(--accent-soft); border-color:#E7C3B2; color:#5e2a17}
+  .c-key .ttl{color:var(--accent-deep)}
+  .c-info{background:var(--info-soft); border-color:#C5DAE7; color:#274558}
+  .c-info .ttl{color:var(--info)}
+  .c-good{background:var(--good-soft); border-color:#BFDDC7; color:#234b30}
+  .c-good .ttl{color:var(--good)}
+  .c-warn{background:var(--warn-soft); border-color:#E8D49A; color:#5c4708}
+  .c-warn .ttl{color:#8a6608}
+  .c-violet{background:var(--violet-soft); border-color:#cfc1ea; color:#3f3266}
+  .c-violet .ttl{color:var(--violet)}
+
+  .toc{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:22px 26px; box-shadow:var(--shadow); margin:30px 0 6px}
+  .toc h4{margin:0 0 14px; font-size:13px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted)}
+  .toc ol{margin:0; padding:0; list-style:none; counter-reset:t; display:grid; grid-template-columns:1fr 1fr; gap:6px 28px}
+  .toc li{counter-increment:t; font-size:15px; padding:5px 0; border-bottom:1px dashed var(--line)}
+  .toc li a{border:0; color:var(--ink); display:flex; gap:10px; align-items:baseline}
+  .toc li a:hover{color:var(--accent-deep)}
+  .toc li a::before{content:counter(t,decimal-leading-zero); color:var(--accent); font-weight:800; font-size:12.5px; min-width:22px}
+
+  .tbl-wrap{overflow-x:auto; margin:20px 0; border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow)}
+  table{border-collapse:collapse; width:100%; font-size:14px; background:var(--surface)}
+  th,td{text-align:left; padding:11px 14px; border-bottom:1px solid var(--line); vertical-align:top}
+  thead th{background:var(--surface-2); font-weight:700; color:var(--ink); font-size:13px; border-bottom:2px solid var(--line-strong)}
+  tbody tr:last-child td{border-bottom:0}
+  tbody tr:hover{background:var(--surface-2)}
+  td.method{font-weight:700; color:var(--accent-deep); white-space:nowrap}
+  .pill{display:inline-block; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; letter-spacing:.03em}
+  .p-cop{background:#DEEAF1; color:#274558}
+  .p-cla{background:#F2DBCF; color:#A84A2A}
+  .p-cod{background:#E0EEE3; color:#234b30}
+  code{background:var(--surface-2); border:1px solid var(--line); border-radius:6px; padding:1.5px 6px; font-family:"SF Mono",Menlo,Consolas,monospace; font-size:12.5px; color:var(--accent-deep)}
+  pre{background:#211F1B; color:#EFE8DC; border-radius:12px; padding:16px 18px; overflow-x:auto; font-family:"SF Mono",Menlo,Consolas,monospace; font-size:12.5px; line-height:1.7; margin:16px 0}
+  pre code{background:none; border:0; color:#EFE8DC; padding:0}
+  pre .c{color:#9B958B}
+  pre .k{color:#E89B79}
+
+  figure{margin:24px 0; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:22px 20px 14px; box-shadow:var(--shadow)}
+  figure svg{display:block; width:100%; height:auto}
+  figcaption{font-size:13px; color:var(--muted); text-align:center; margin-top:12px; padding-top:10px; border-top:1px dashed var(--line)}
+  figcaption b{color:var(--accent-deep)}
+
+  ul.clean{margin:6px 0 18px; padding:0; list-style:none}
+  ul.clean li{position:relative; padding:4px 0 4px 26px; font-size:15.5px}
+  ul.clean li::before{content:""; position:absolute; left:6px; top:14px; width:7px; height:7px; border-radius:2px; background:var(--accent); transform:rotate(45deg)}
+
+  .src{font-size:13px; color:var(--muted)}
+  footer{margin-top:48px; background:#20231F; color:#C9C2B6; padding:38px 0}
+  footer .wrap{font-size:14px}
+  footer h4{color:#E6BBA6; margin:0 0 10px; font-size:13px; letter-spacing:.1em; text-transform:uppercase}
+  footer a{color:#D9B6A4; border-bottom:1px solid rgba(217,182,164,.3)}
+
+  @media(max-width:680px){
+    .hero h1{font-size:26px}
+    h2{font-size:21px}
+    .toc ol{grid-template-columns:1fr}
+    .wrap{padding:0 16px}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="kicker">Spec-Driven × Interview × ADR Handoff · 構築手順書</span>
+    <h1>統合エージェント開発<br><span class="em">ワークフロー</span> 構築手順書</h1>
+    <p class="lead">仕様駆動（Spec Kit）・インタビュー深掘り（grill-me / AskUserQuestion）・ADR引き継ぎを1つにまとめ、GitHub Copilot / Claude Code / OpenAI Codex のどれでも、どのプロジェクト・どのタスクでも同じ流れで開発できる構成を、2026年6月時点の情報で具体的な手順としてまとめます。</p>
+    <div class="meta">
+      <span><b>対象</b> Copilot / Claude Code / Codex</span>
+      <span><b>時点</b> 2026年6月</span>
+      <span><b>方式</b> 自前構築（共有コア＋アダプタ）</span>
+    </div>
+    <div class="hero-figs">
+      <span class="chip"><b>3</b> 本柱を統合</span>
+      <span class="chip"><b>8</b> ステップの共通ワークフロー</span>
+      <span class="chip"><b>1</b> つの共有コア</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <nav class="toc" aria-label="目次">
+    <h4>目次</h4>
+    <ol>
+      <li><a href="#summary">結論と全体像</a></li>
+      <li><a href="#arch">アーキテクチャ：共有コア＋アダプタ</a></li>
+      <li><a href="#pillars">3本柱の役割分担</a></li>
+      <li><a href="#workflow">8ステップ・ワークフロー</a></li>
+      <li><a href="#grill">インタビュー深掘り（grill-me）</a></li>
+      <li><a href="#spec">仕様駆動（Spec Kit）</a></li>
+      <li><a href="#handoff">ADR引き継ぎ（memory-bank）</a></li>
+      <li><a href="#agents">エージェント別の導入</a></li>
+      <li><a href="#quickstart">構築手順（クイックスタート）</a></li>
+      <li><a href="#notes">注意点・使い分け</a></li>
+      <li><a href="#refs">出典</a></li>
+    </ol>
+  </nav>
+
+<!-- ===================== 1. SUMMARY ===================== -->
+<section id="summary">
+  <div class="sec-head"><span class="sec-num">01</span><h2>結論と全体像</h2></div>
+  <p class="sec-sub">3つの手法を1つに束ね、3つのエージェントで同じ流れを回す。鍵は「共有コア＋アダプタ」。</p>
+
+  <p>このガイドは、これまで個別に見てきた <strong>仕様駆動開発・インタビュー深掘り・ADR引き継ぎ</strong> を
+  1つのワークフローに統合し、<strong>GitHub Copilot / Claude Code / OpenAI Codex のどれでも、
+  どのプロジェクト・どのタスクでも同じ手順で開発できる</strong>構成を、具体的な手順としてまとめます。</p>
+
+  <div class="callout c-key">
+    <div class="ttl">◆ 設計の核（1文）</div>
+    <strong>AGENTS.md を全エージェント共通の“背骨”にし、Spec Kit はエージェント別に導入、
+    grill-me は移植可能な Agent Skill として共有、ADR＋memory-bank で引き継ぐ。</strong>
+    仕様・決定・進捗は<strong>ツール非依存のファイル</strong>として1か所に置くので、
+    エージェントを切り替えても文脈が途切れません。
+  </div>
+
+  <div class="callout c-info">
+    <div class="ttl">▶ 付随する構築キットと対で使う</div>
+    本手順書は、別途用意した実ファイル一式 <code>spec-driven-handoff-kit/</code>（AGENTS.md・
+    constitution・skills・prompts・memory-bank・specs 見本）と<strong>対</strong>です。
+    ここで全体像と手順を理解し、キットのファイルを自分のリポジトリにコピーして構築します。
+  </div>
+</section>
+
+<!-- ===================== 2. ARCH ===================== -->
+<section id="arch">
+  <div class="sec-head"><span class="sec-num">02</span><h2>アーキテクチャ：共有コア＋アダプタ</h2></div>
+  <p class="sec-sub">1つの共有コアを、3エージェントが各自のアダプタ越しに読み書きする。これが横断の要。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="共有コアと3エージェントのアーキテクチャ">
+      <defs>
+        <marker id="ar" markerWidth="9" markerHeight="9" refX="4.5" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#6E6960"/></marker>
+      </defs>
+      <g font-family="Hiragino Sans,system-ui,sans-serif">
+        <!-- shared core -->
+        <rect x="60" y="24" width="740" height="120" rx="14" fill="#FBF8F3" stroke="#C15F3C" stroke-width="2"/>
+        <text x="80" y="50" font-size="14.5" font-weight="800" fill="#A84A2A">共有コア（ツール非依存・git管理・全エージェントが読む）</text>
+        <rect x="80" y="62" width="165" height="66" rx="9" fill="#F2DBCF" stroke="#E7C3B2"/>
+        <text x="162" y="88" text-anchor="middle" font-size="12.5" font-weight="700" fill="#A84A2A" font-family="monospace">AGENTS.md</text>
+        <text x="162" y="108" text-anchor="middle" font-size="10" fill="#8a4427">背骨：ワークフロー＋規約</text>
+        <rect x="255" y="62" width="165" height="66" rx="9" fill="#fff" stroke="#E7C3B2"/>
+        <text x="337" y="88" text-anchor="middle" font-size="12" font-weight="700" fill="#5e2a17" font-family="monospace">constitution.md</text>
+        <text x="337" y="108" text-anchor="middle" font-size="10" fill="#8a4427">憲法（不変原則）</text>
+        <rect x="430" y="62" width="165" height="66" rx="9" fill="#fff" stroke="#E7C3B2"/>
+        <text x="512" y="88" text-anchor="middle" font-size="12.5" font-weight="700" fill="#5e2a17" font-family="monospace">specs/</text>
+        <text x="512" y="108" text-anchor="middle" font-size="10" fill="#8a4427">spec / plan / tasks</text>
+        <rect x="605" y="62" width="175" height="66" rx="9" fill="#fff" stroke="#E7C3B2"/>
+        <text x="692" y="88" text-anchor="middle" font-size="12.5" font-weight="700" fill="#5e2a17" font-family="monospace">memory-bank/</text>
+        <text x="692" y="108" text-anchor="middle" font-size="10" fill="#8a4427">progress・decisions(ADR)</text>
+
+        <!-- arrows -->
+        <path d="M180,210 L180,148" stroke="#6E6960" stroke-width="1.6" marker-end="url(#ar)"/>
+        <path d="M180,146 L180,206" stroke="#6E6960" stroke-width="1.6" marker-end="url(#ar)" opacity="0"/>
+        <path d="M430,210 L430,148" stroke="#6E6960" stroke-width="1.6" marker-end="url(#ar)"/>
+        <path d="M680,210 L680,148" stroke="#6E6960" stroke-width="1.6" marker-end="url(#ar)"/>
+        <text x="430" y="168" text-anchor="middle" font-size="10.5" fill="#6E6960">読む / 書く（双方向）</text>
+
+        <!-- agents -->
+        <rect x="40" y="214" width="245" height="150" rx="13" fill="#DEEAF1" stroke="#C5DAE7"/>
+        <text x="162" y="240" text-anchor="middle" font-size="14" font-weight="800" fill="#23415a">GitHub Copilot</text>
+        <text x="162" y="262" text-anchor="middle" font-size="11" fill="#33597a">アダプタ：</text>
+        <text x="162" y="280" text-anchor="middle" font-size="10.5" fill="#274558" font-family="monospace">.github/copilot-instructions.md</text>
+        <text x="162" y="296" text-anchor="middle" font-size="10.5" fill="#274558" font-family="monospace">.github/prompts/*.prompt.md</text>
+        <text x="162" y="318" text-anchor="middle" font-size="10.5" fill="#33597a">ネイティブ：Copilot Memory</text>
+        <text x="162" y="344" text-anchor="middle" font-size="10" fill="#9B958B">Spec Kit → prompt files</text>
+
+        <rect x="307" y="214" width="246" height="150" rx="13" fill="#F2DBCF" stroke="#E7C3B2"/>
+        <text x="430" y="240" text-anchor="middle" font-size="14" font-weight="800" fill="#A84A2A">Claude Code</text>
+        <text x="430" y="262" text-anchor="middle" font-size="11" fill="#8a4427">アダプタ：</text>
+        <text x="430" y="280" text-anchor="middle" font-size="10.5" fill="#5e2a17" font-family="monospace">.claude/skills/*/SKILL.md</text>
+        <text x="430" y="296" text-anchor="middle" font-size="10.5" fill="#5e2a17">AGENTS.md（＋任意 CLAUDE.md）</text>
+        <text x="430" y="318" text-anchor="middle" font-size="10.5" fill="#8a4427">ネイティブ：AskUserQuestion・メモリ</text>
+        <text x="430" y="344" text-anchor="middle" font-size="10" fill="#9B958B">Spec Kit → skills</text>
+
+        <rect x="575" y="214" width="245" height="150" rx="13" fill="#E0EEE3" stroke="#BFDDC7"/>
+        <text x="697" y="240" text-anchor="middle" font-size="14" font-weight="800" fill="#234b30">OpenAI Codex</text>
+        <text x="697" y="262" text-anchor="middle" font-size="11" fill="#33694a">アダプタ：</text>
+        <text x="697" y="280" text-anchor="middle" font-size="10.5" fill="#234b30" font-family="monospace">skills/ ＋ AGENTS.md 連鎖</text>
+        <text x="697" y="300" text-anchor="middle" font-size="10.5" fill="#33694a">ネイティブ：memories・resume</text>
+        <text x="697" y="322" text-anchor="middle" font-size="10.5" fill="#33694a"> </text>
+        <text x="697" y="344" text-anchor="middle" font-size="10" fill="#9B958B">Spec Kit → skills</text>
+      </g>
+    </svg>
+    <figcaption><b>図1</b>：仕様・ADR・進捗は<b>共有コアに1つだけ</b>。各エージェントは自分のアダプタ（prompts / skills）越しに同じコアを読み書きする。だから <b>Copilotで詰めた仕様をClaude Codeで実装</b>、のような横断が成立する。</figcaption>
+  </figure>
+
+  <div class="callout c-good">
+    <div class="ttl">✔ なぜ横断できるのか</div>
+    <strong>AGENTS.md</strong> は3エージェントすべてが読む共通標準。<strong>Spec Kit</strong> は同じ
+    <code>specs/</code> を生成・更新し、<strong>grill-me</strong> は移植可能な <code>SKILL.md</code> 形式、
+    <strong>ADR/progress</strong> は素のMarkdown。共有コアが素のファイルだからこそ、ツールを選ばない。
+  </div>
+</section>
+
+<!-- ===================== 3. PILLARS ===================== -->
+<section id="pillars">
+  <div class="sec-head"><span class="sec-num">03</span><h2>3本柱の役割分担</h2></div>
+  <p class="sec-sub">統合といっても、3つの手法は競合しない。役割が違い、ワークフローの別々の場面で効く。</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>柱</th><th>役割（いつ効くか）</th><th>道具</th><th>成果物</th></tr></thead>
+      <tbody>
+        <tr><td class="method">① インタビュー深掘り</td><td>実装前に<strong>要件・制約・前提・代替案</strong>を引き出し、曖昧さを潰す</td><td>grill-me（Skill）／ Claude の AskUserQuestion</td><td>固まった意図 → spec の下書き</td></tr>
+        <tr><td class="method">② 仕様駆動</td><td>意図を<strong>spec→plan→tasks→実装</strong>へ段階的に降ろし、推測を消す</td><td>Spec Kit（<code>/speckit.*</code>）＋ constitution</td><td><code>specs/&lt;NNNN&gt;/</code> の3点セット</td></tr>
+        <tr><td class="method">③ ADR引き継ぎ</td><td>決定と進捗を<strong>窓の外に残し</strong>、次セッション/別エージェントへ継承</td><td>memory-bank（ADR・progress）＋各ネイティブ記憶</td><td>ADR・progress・architecture</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout c-violet">
+    <div class="ttl">◆ 3本柱がつながる瞬間</div>
+    <strong>grill で固めた意図が spec になり（①→②）、spec から実装が生まれ、その過程の決定が
+    ADR として残り（②→③）、次のセッションは ADR と progress を読んで再開する（③→①）。</strong>
+    この円環が次章のワークフローです。
+  </div>
+</section>
+
+<!-- ===================== 4. WORKFLOW ===================== -->
+<section id="workflow">
+  <div class="sec-head"><span class="sec-num">04</span><h2>8ステップ・ワークフロー</h2></div>
+  <p class="sec-sub">どのストーリー/タスクでも、毎回この円環を回す。色は3本柱の対応を表す。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="8ステップの統合ワークフロー">
+      <defs>
+        <marker id="wf" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#6E6960"/></marker>
+      </defs>
+      <g font-family="Hiragino Sans,system-ui,sans-serif">
+        <!-- legend -->
+        <rect x="40" y="20" width="13" height="13" rx="3" fill="#DEEAF1" stroke="#C5DAE7"/><text x="59" y="31" font-size="11" fill="#274558">引き継ぎ</text>
+        <rect x="150" y="20" width="13" height="13" rx="3" fill="#E8E1F2" stroke="#cfc1ea"/><text x="169" y="31" font-size="11" fill="#4a3a72">インタビュー</text>
+        <rect x="290" y="20" width="13" height="13" rx="3" fill="#F2DBCF" stroke="#E7C3B2"/><text x="309" y="31" font-size="11" fill="#A84A2A">仕様駆動</text>
+
+        <!-- row 1: 0,1,2,3 -->
+        <g font-size="12">
+          <rect x="40" y="52" width="180" height="60" rx="10" fill="#DEEAF1" stroke="#C5DAE7"/>
+          <text x="56" y="76" font-weight="800" fill="#23415a">0 · 再開</text>
+          <text x="56" y="96" font-size="10.5" fill="#33597a">引き継ぎを読み現在地把握</text>
+          <rect x="240" y="52" width="180" height="60" rx="10" fill="#E8E1F2" stroke="#cfc1ea"/>
+          <text x="256" y="76" font-weight="800" fill="#4a3a72">1 · 深掘り</text>
+          <text x="256" y="96" font-size="10.5" fill="#5a4d7a">grill で要件・前提を洗う</text>
+          <rect x="440" y="52" width="180" height="60" rx="10" fill="#F2DBCF" stroke="#E7C3B2"/>
+          <text x="456" y="76" font-weight="800" fill="#A84A2A">2 · 仕様</text>
+          <text x="456" y="96" font-size="10.5" fill="#8a4427">spec.md を確定（何を・なぜ）</text>
+          <rect x="640" y="52" width="180" height="60" rx="10" fill="#F2DBCF" stroke="#E7C3B2"/>
+          <text x="656" y="76" font-weight="800" fill="#A84A2A">3 · 計画</text>
+          <text x="656" y="96" font-size="10.5" fill="#8a4427">plan.md（構成・制約）</text>
+        </g>
+        <!-- row 2: 4,5,6,7 (reversed visual flow) -->
+        <g font-size="12">
+          <rect x="640" y="160" width="180" height="60" rx="10" fill="#F2DBCF" stroke="#E7C3B2"/>
+          <text x="656" y="184" font-weight="800" fill="#A84A2A">4 · 分解</text>
+          <text x="656" y="204" font-size="10.5" fill="#8a4427">tasks.md（検証可能な小単位）</text>
+          <rect x="440" y="160" width="180" height="60" rx="10" fill="#F2DBCF" stroke="#E7C3B2"/>
+          <text x="456" y="184" font-weight="800" fill="#A84A2A">5 · 実装</text>
+          <text x="456" y="204" font-size="10.5" fill="#8a4427">1タスクずつ＋各々検証</text>
+          <rect x="240" y="160" width="180" height="60" rx="10" fill="#DEEAF1" stroke="#C5DAE7"/>
+          <text x="256" y="184" font-weight="800" fill="#23415a">6 · 記録</text>
+          <text x="256" y="204" font-size="10.5" fill="#33597a">重要判断をADRに追記</text>
+          <rect x="40" y="160" width="180" height="60" rx="10" fill="#DEEAF1" stroke="#C5DAE7"/>
+          <text x="56" y="184" font-weight="800" fill="#23415a">7 · 引き継ぎ</text>
+          <text x="56" y="204" font-size="10.5" fill="#33597a">progress 更新・差分提示</text>
+        </g>
+
+        <!-- arrows row1 -->
+        <path d="M220,82 L238,82" stroke="#6E6960" stroke-width="1.8" marker-end="url(#wf)"/>
+        <path d="M420,82 L438,82" stroke="#6E6960" stroke-width="1.8" marker-end="url(#wf)"/>
+        <path d="M620,82 L638,82" stroke="#6E6960" stroke-width="1.8" marker-end="url(#wf)"/>
+        <!-- down from 3 to 4 -->
+        <path d="M730,112 L730,158" stroke="#6E6960" stroke-width="1.8" marker-end="url(#wf)"/>
+        <!-- arrows row2 (right to left) -->
+        <path d="M640,190 L622,190" stroke="#6E6960" stroke-width="1.8" marker-end="url(#wf)"/>
+        <path d="M440,190 L422,190" stroke="#6E6960" stroke-width="1.8" marker-end="url(#wf)"/>
+        <path d="M240,190 L222,190" stroke="#6E6960" stroke-width="1.8" marker-end="url(#wf)"/>
+        <!-- loop back 7 -> 0 -->
+        <path d="M130,160 L130,114" stroke="#6E6960" stroke-width="1.8" stroke-dasharray="6 4" marker-end="url(#wf)"/>
+        <text x="150" y="140" font-size="10.5" fill="#6E6960" font-weight="700">次セッションへ循環</text>
+
+        <!-- footer note -->
+        <rect x="40" y="262" width="780" height="40" rx="10" fill="#FBF8F3" stroke="#E5DDD1"/>
+        <text x="430" y="287" text-anchor="middle" font-size="11.5" fill="#6E6960">各ステップは Spec Kit のコマンド（<tspan font-family="monospace" fill="#A84A2A">/speckit.specify / .plan / .tasks / .implement</tspan>）と grill / handoff スキルで実行する</text>
+      </g>
+    </svg>
+    <figcaption><b>図2</b>：<b>開始＝読む（0）／終了＝書く（7）</b>を必ず挟むのが要。2〜5の仕様駆動は Spec Kit、1の深掘りは grill、0・6・7の引き継ぎは ADR/progress が担当する。</figcaption>
+  </figure>
+</section>
+
+<!-- ===================== 5. GRILL ===================== -->
+<section id="grill">
+  <div class="sec-head"><span class="sec-num">05</span><h2>インタビュー深掘り（grill-me）</h2></div>
+  <p class="sec-sub">「容赦なく質問して意図を引き出す」スキル。曖昧なまま実装に入る事故を防ぐ、ワークフローの入口。</p>
+
+  <p><strong>grill-me</strong>（Matt Pocock 発の Agent Skill）は、計画や仕様を<strong>質問攻めで圧迫テスト</strong>し、
+  意図・制約・隠れた前提・語られていない代替案を引き出すスキルです。<strong>Claude Code・Codex・Copilot
+  ほか40以上</strong>のエージェントが使う <code>SKILL.md</code> 形式で、本キットにも汎用版を同梱しています。
+  Claude Code では標準の <code>AskUserQuestion</code> でも同様の自動インタビューができます。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="grill-meの深さ優先インタビュー">
+      <defs>
+        <marker id="gf" markerWidth="9" markerHeight="9" refX="4.5" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#6A5099"/></marker>
+      </defs>
+      <g font-family="Hiragino Sans,system-ui,sans-serif">
+        <!-- depth-first good -->
+        <text x="40" y="36" font-size="13" font-weight="800" fill="#3F7D54">○ 深さ優先（grill の流儀）</text>
+        <g font-size="11">
+          <rect x="40" y="48" width="300" height="30" rx="7" fill="#E8E1F2" stroke="#cfc1ea"/><text x="54" y="68" fill="#4a3a72">Q1（推奨回答つき）→ 回答</text>
+          <rect x="70" y="86" width="300" height="30" rx="7" fill="#E8E1F2" stroke="#cfc1ea"/><text x="84" y="106" fill="#4a3a72">↳ Q1を掘る（なぜ？例外は？）→ 回答</text>
+          <rect x="100" y="124" width="300" height="30" rx="7" fill="#E8E1F2" stroke="#cfc1ea"/><text x="114" y="144" fill="#4a3a72">↳ さらに掘る → 底に到達</text>
+          <rect x="40" y="162" width="300" height="30" rx="7" fill="#DEEAF1" stroke="#C5DAE7"/><text x="54" y="182" fill="#23415a">→ 次の論点 Q2 へ</text>
+          <path d="M64,78 L84,84" stroke="#6A5099" stroke-width="1.4" marker-end="url(#gf)"/>
+          <path d="M94,116 L114,122" stroke="#6A5099" stroke-width="1.4" marker-end="url(#gf)"/>
+          <path d="M120,154 L80,160" stroke="#6A5099" stroke-width="1.4" marker-end="url(#gf)"/>
+        </g>
+        <text x="40" y="214" font-size="10.5" fill="#33694a">1本の筋を底まで追うから深い理解になる</text>
+
+        <!-- lenses -->
+        <text x="470" y="36" font-size="13" font-weight="800" fill="#A84A2A">使うレンズ（名乗らず切替）</text>
+        <g font-size="11" fill="#5e2a17">
+          <rect x="470" y="48" width="170" height="28" rx="14" fill="#F2DBCF" stroke="#E7C3B2"/><text x="555" y="66" text-anchor="middle">第一原理</text>
+          <rect x="650" y="48" width="170" height="28" rx="14" fill="#F2DBCF" stroke="#E7C3B2"/><text x="735" y="66" text-anchor="middle">プレモータム</text>
+          <rect x="470" y="84" width="170" height="28" rx="14" fill="#F2DBCF" stroke="#E7C3B2"/><text x="555" y="102" text-anchor="middle">最強の反論</text>
+          <rect x="650" y="84" width="170" height="28" rx="14" fill="#F2DBCF" stroke="#E7C3B2"/><text x="735" y="102" text-anchor="middle">可逆性</text>
+          <rect x="470" y="120" width="170" height="28" rx="14" fill="#F2DBCF" stroke="#E7C3B2"/><text x="555" y="138" text-anchor="middle">なぜを5回</text>
+          <rect x="650" y="120" width="170" height="28" rx="14" fill="#F2DBCF" stroke="#E7C3B2"/><text x="735" y="138" text-anchor="middle">隠れた前提</text>
+          <rect x="470" y="156" width="170" height="28" rx="14" fill="#F2DBCF" stroke="#E7C3B2"/><text x="555" y="174" text-anchor="middle">次善策</text>
+          <rect x="650" y="156" width="170" height="28" rx="14" fill="#F2DBCF" stroke="#E7C3B2"/><text x="735" y="174" text-anchor="middle">持続可能性</text>
+        </g>
+        <text x="470" y="214" font-size="10.5" fill="#8a4427">「次の具体的アクションが可能」になったら終了 → 結論を spec へ</text>
+      </g>
+    </svg>
+    <figcaption><b>図3</b>：設計の肝は「<b>1問ずつ＋推奨回答</b>」と「<b>直前の答えを掘り切ってから横へ</b>」。叩き台に反応する形なので答えやすく、深い合意に至る。</figcaption>
+  </figure>
+
+  <p>起動の合図は <strong>「grill me on…」「interview me about…」「pressure-test this…」</strong> など。
+  本キットでは Copilot は <code>/grill-me</code>（prompt file）、Claude Code / Codex は
+  <code>grill-me</code> スキルで呼びます。結論は <code>specs/&lt;NNNN&gt;/spec.md</code> に反映し、
+  重要な判断は ADR 追記を促します。</p>
+</section>
+
+<!-- ===================== 6. SPEC KIT ===================== -->
+<section id="spec">
+  <div class="sec-head"><span class="sec-num">06</span><h2>仕様駆動（Spec Kit）</h2></div>
+  <p class="sec-sub">深掘りで固めた意図を、憲法→spec→plan→tasks→実装へ段階的に降ろす。エージェント別に導入する。</p>
+
+  <p>grill で固めた意図を、<strong>Spec Kit</strong> の4フェーズで実装へ落とします。土台に
+  <strong>憲法（constitution）</strong>を置き、各フェーズはチェックポイントで人がレビューします。
+  Spec Kit は3エージェントすべてに対応し、<strong>使うエージェントごとに導入</strong>します。</p>
+
+  <pre><code><span class="c"># プロジェクトに Spec Kit を導入（使うエージェントごとに1回）</span>
+specify init . --integration copilot
+specify init . --integration claude
+specify init . --integration codex
+<span class="c"># 版により --ai の場合あり。非対話時の既定は copilot。`specify init --help` で確認</span>
+
+<span class="c"># 以降、各エージェントのチャットで（Copilotは prompt file、Claude/Codex は skill として）</span>
+/speckit.constitution   <span class="c"># 不変原則を確立 → .specify/memory/constitution.md</span>
+/speckit.specify        <span class="c"># 何を・なぜ → specs/&lt;NNNN&gt;/spec.md</span>
+/speckit.plan           <span class="c"># スタック・構成・制約 → plan.md</span>
+/speckit.tasks          <span class="c"># 検証可能な小タスク → tasks.md</span>
+/speckit.implement      <span class="c"># タスクを1つずつ実装</span></code></pre>
+
+  <div class="callout c-info">
+    <div class="ttl">▶ 詳細は専用資料へ</div>
+    Spec Kit の思想・4フェーズ・コマンドの詳細は、別資料「GitHub Spec Kit 詳解」にまとめています。
+    本ワークフローでは、<strong>生成される <code>specs/&lt;NNNN&gt;/</code> が引き継ぎ資産も兼ねる</strong>
+    （次セッションが読む）点が重要です。Spec Kit を使わず、AGENTS.md の指示だけで素の Markdown として
+    spec/plan/tasks を書く運用でも成立します。
+  </div>
+</section>
+
+<!-- ===================== 7. HANDOFF ===================== -->
+<section id="handoff">
+  <div class="sec-head"><span class="sec-num">07</span><h2>ADR引き継ぎ（memory-bank）</h2></div>
+  <p class="sec-sub">決定と進捗を窓の外のファイルに残し、次セッション・別エージェントへ確実に継承する。</p>
+
+  <p>セッションをまたぐ記憶は、会話ではなく <code>memory-bank/</code> のファイルに置きます。
+  各エージェントのネイティブ記憶（Copilot Memory・Codex memories・Claude のメモリ）は<strong>補助</strong>で、
+  自動・確率的・失効ありのため、<strong>確定情報は必ずファイル側に</strong>持ちます。</p>
+
+  <ul class="clean">
+    <li><strong><code>progress.md</code></strong>：現在地・次の一手・最近の変更。開始時に読み、終了時に更新（心臓部）。</li>
+    <li><strong><code>architecture.md</code></strong>：変わりにくい構造の地図。大きな変更時だけ更新。</li>
+    <li><strong><code>decisions/</code>（ADR）</strong>：重要な判断を1決定1ファイルで連番記録。<strong>追記のみ</strong>。
+      変更は過去ADRを消さず <strong>supersede</strong> する（「進化 vs 上書き」問題を回避）。</li>
+  </ul>
+
+  <div class="callout c-good">
+    <div class="ttl">✔ 別エージェントへの引き継ぎも同じ仕組み</div>
+    相手のエージェントも <code>AGENTS.md</code> と <code>memory-bank/</code> を読むので、
+    <strong>Copilot で詰めた spec を Claude Code が実装し、決定は Codex も読める</strong>。
+    1つの共有コアが、ツール間の引き継ぎをそのまま可能にします。詳細は別資料
+    「セッション間引き継ぎ 詳解」を参照。
+  </div>
+</section>
+
+<!-- ===================== 8. AGENTS ===================== -->
+<section id="agents">
+  <div class="sec-head"><span class="sec-num">08</span><h2>エージェント別の導入</h2></div>
+  <p class="sec-sub">共有コアは同じ。違うのは「アダプタ（コマンド/スキル）の置き場所」と「呼び方」だけ。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="同じ機能を各エージェントの置き場所へ">
+      <defs>
+        <marker id="af2" markerWidth="9" markerHeight="9" refX="4.5" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#6E6960"/></marker>
+      </defs>
+      <g font-family="Hiragino Sans,system-ui,sans-serif">
+        <!-- source -->
+        <rect x="40" y="78" width="200" height="56" rx="11" fill="#FBF8F3" stroke="#C15F3C" stroke-width="1.5"/>
+        <text x="140" y="100" text-anchor="middle" font-size="12.5" font-weight="800" fill="#A84A2A">grill / resume / update</text>
+        <text x="140" y="120" text-anchor="middle" font-size="10.5" fill="#8a4427">（同じ中身の機能）</text>
+        <!-- three homes -->
+        <rect x="600" y="20" width="220" height="50" rx="10" fill="#DEEAF1" stroke="#C5DAE7"/>
+        <text x="710" y="40" text-anchor="middle" font-size="12" font-weight="700" fill="#23415a">Copilot</text>
+        <text x="710" y="58" text-anchor="middle" font-size="10" fill="#274558" font-family="monospace">.github/prompts/*.prompt.md</text>
+        <rect x="600" y="80" width="220" height="50" rx="10" fill="#F2DBCF" stroke="#E7C3B2"/>
+        <text x="710" y="100" text-anchor="middle" font-size="12" font-weight="700" fill="#A84A2A">Claude Code</text>
+        <text x="710" y="118" text-anchor="middle" font-size="10" fill="#5e2a17" font-family="monospace">.claude/skills/*/SKILL.md</text>
+        <rect x="600" y="140" width="220" height="50" rx="10" fill="#E0EEE3" stroke="#BFDDC7"/>
+        <text x="710" y="160" text-anchor="middle" font-size="12" font-weight="700" fill="#234b30">Codex</text>
+        <text x="710" y="178" text-anchor="middle" font-size="10" fill="#234b30" font-family="monospace">skills/ ＋ AGENTS.md 連鎖</text>
+        <!-- arrows -->
+        <path d="M240,98 L598,45" stroke="#6E6960" stroke-width="1.5" marker-end="url(#af2)"/>
+        <path d="M240,106 L598,105" stroke="#6E6960" stroke-width="1.5" marker-end="url(#af2)"/>
+        <path d="M240,114 L598,165" stroke="#6E6960" stroke-width="1.5" marker-end="url(#af2)"/>
+        <text x="420" y="80" text-anchor="middle" font-size="10.5" fill="#6E6960">同じ機能を各ツールの置き場所へ</text>
+      </g>
+    </svg>
+    <figcaption><b>図4</b>：grill / resume / update の中身は1つ。<b>Copilot は prompt file、Claude/Codex は SKILL.md</b> として配置するだけ。Spec Kit も <code>specify init --integration</code> が各形式で導入する。</figcaption>
+  </figure>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>項目</th><th><span class="pill p-cop">Copilot</span></th><th><span class="pill p-cla">Claude Code</span></th><th><span class="pill p-cod">Codex</span></th></tr></thead>
+      <tbody>
+        <tr><td class="method">背骨</td><td><code>AGENTS.md</code>＋<code>.github/copilot-instructions.md</code></td><td><code>AGENTS.md</code>（＋任意 <code>CLAUDE.md</code>）</td><td><code>AGENTS.md</code>（連鎖で読む）</td></tr>
+        <tr><td class="method">スキル/コマンド</td><td><code>.github/prompts/*.prompt.md</code></td><td><code>.claude/skills/*/SKILL.md</code></td><td>Codex の skills ディレクトリ</td></tr>
+        <tr><td class="method">Spec Kit 導入</td><td><code>--integration copilot</code>（prompt files）</td><td><code>--integration claude</code>（skills）</td><td><code>--integration codex</code>（skills）</td></tr>
+        <tr><td class="method">深掘りの呼び方</td><td><code>/grill-me</code></td><td><code>/grill-me</code> or AskUserQuestion</td><td>grill-me スキル起動</td></tr>
+        <tr><td class="method">ネイティブ記憶</td><td>Copilot Memory（自動・約28日）</td><td>メモリ（補助）</td><td>memories＋<code>codex resume</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ===================== 9. QUICKSTART ===================== -->
+<section id="quickstart">
+  <div class="sec-head"><span class="sec-num">09</span><h2>構築手順（クイックスタート）</h2></div>
+  <p class="sec-sub">付随キット <code>spec-driven-handoff-kit/</code> を使えば5段階で構築できる。小さく始めて足していく。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="構築の5段階">
+      <defs>
+        <marker id="qf" markerWidth="9" markerHeight="9" refX="4.5" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#9B958B"/></marker>
+      </defs>
+      <g font-family="Hiragino Sans,system-ui,sans-serif">
+        <rect x="40" y="24" width="780" height="40" rx="10" fill="#E0EEE3" stroke="#BFDDC7"/>
+        <circle cx="64" cy="44" r="13" fill="#3F7D54"/><text x="64" y="49" text-anchor="middle" font-size="12" font-weight="800" fill="#fff">1</text>
+        <text x="88" y="49" font-size="12.5" fill="#234b30"><tspan font-weight="800">共有コアをコピー</tspan> ― shared/ の AGENTS.md・memory-bank・specs・constitution をリポジトリ直下へ</text>
+
+        <rect x="40" y="72" width="780" height="40" rx="10" fill="#F2DBCF" stroke="#E7C3B2"/>
+        <circle cx="64" cy="92" r="13" fill="#C15F3C"/><text x="64" y="97" text-anchor="middle" font-size="12" font-weight="800" fill="#fff">2</text>
+        <text x="88" y="97" font-size="12.5" fill="#5e2a17"><tspan font-weight="800">Spec Kit を導入</tspan> ― 使うエージェントごとに specify init --integration &lt;copilot|claude|codex&gt;</text>
+
+        <rect x="40" y="120" width="780" height="40" rx="10" fill="#DEEAF1" stroke="#C5DAE7"/>
+        <circle cx="64" cy="140" r="13" fill="#3A6B8C"/><text x="64" y="145" text-anchor="middle" font-size="12" font-weight="800" fill="#fff">3</text>
+        <text x="88" y="145" font-size="12.5" fill="#23415a"><tspan font-weight="800">アダプタを配置</tspan> ― copilot/ → .github/、skills/ → .claude/skills/ ・ Codex の skills へ</text>
+
+        <rect x="40" y="168" width="780" height="40" rx="10" fill="#E8E1F2" stroke="#cfc1ea"/>
+        <circle cx="64" cy="188" r="13" fill="#6A5099"/><text x="64" y="193" text-anchor="middle" font-size="12" font-weight="800" fill="#fff">4</text>
+        <text x="88" y="193" font-size="12.5" fill="#4a3a72"><tspan font-weight="800">中身を記入</tspan> ― AGENTS.md / constitution / memory-bank の &lt;...&gt; を自分のプロジェクトで埋める</text>
+
+        <rect x="40" y="216" width="780" height="34" rx="10" fill="#211F1B"/>
+        <circle cx="64" cy="233" r="12" fill="#E6BBA6"/><text x="64" y="238" text-anchor="middle" font-size="12" font-weight="800" fill="#211F1B">5</text>
+        <text x="88" y="238" font-size="12.5" fill="#EFE8DC"><tspan font-weight="800" fill="#E6BBA6">コミット</tspan> ― git add で共有。以後どのエージェントでも同じワークフローが回る</text>
+      </g>
+    </svg>
+    <figcaption><b>図5</b>：まずは <b>1（共有コア）＋ grill</b> だけでも動く。Spec Kit や3エージェント併用は後から足せる。</figcaption>
+  </figure>
+
+  <pre><code><span class="c"># 1) 共有コアをコピー</span>
+cp -r shared/AGENTS.md shared/memory-bank shared/specs &lt;your-repo&gt;/
+mkdir -p &lt;your-repo&gt;/.specify/memory &amp;&amp; cp shared/constitution.md &lt;your-repo&gt;/.specify/memory/
+
+<span class="c"># 2) Spec Kit（使うエージェント分）</span>
+specify init . --integration copilot   <span class="c"># 必要に応じ claude / codex も</span>
+
+<span class="c"># 3) アダプタ配置</span>
+cp copilot/copilot-instructions.md &lt;your-repo&gt;/.github/copilot-instructions.md
+cp copilot/prompts/*.prompt.md      &lt;your-repo&gt;/.github/prompts/
+cp -r skills/*                      &lt;your-repo&gt;/.claude/skills/   <span class="c"># Codex は各自の skills へ</span>
+
+<span class="c"># 5) コミット</span>
+git add AGENTS.md .github .claude .specify memory-bank specs
+git commit -m "Add unified spec-driven handoff workflow"</code></pre>
+</section>
+
+<!-- ===================== 10. NOTES ===================== -->
+<section id="notes">
+  <div class="sec-head"><span class="sec-num">10</span><h2>注意点・使い分け</h2></div>
+  <p class="sec-sub">統合は強力だが、入れすぎは逆効果。最小から育てる。</p>
+
+  <ul class="clean">
+    <li><strong>小さく始める</strong>：まず <code>AGENTS.md</code>＋<code>memory-bank/</code>＋<code>grill-me</code> から。Spec Kit と3エージェント併用は後で足す。</li>
+    <li><strong>指示は短く保つ</strong>：AGENTS.md / constitution が肥大化すると重要指示が埋もれる。「消すと間違えるか？」がNoなら削る。</li>
+    <li><strong>確定情報はファイルに</strong>：ネイティブ記憶（Copilot Memory・Codex memories）は補助。失効・確率的なので頼り切らない。</li>
+    <li><strong>ターンキー代替</strong>：自前構築の代わりに、クロスエージェントSDDハーネス <a href="https://github.com/gotalab/cc-sdd">cc-sdd</a>（Agent Skills で Claude/Codex/Copilot 対応）を土台にする手も。「共有コア＋アダプタ」の考え方はそのまま使える。</li>
+    <li><strong>版差に注意</strong>：<code>specify init --help</code>、各エージェントのスキル/プロンプト配置は最新ドキュメントで確認する。</li>
+  </ul>
+
+  <div class="callout c-key">
+    <div class="ttl">◆ ひとことで</div>
+    <strong>「1つの共有コア（AGENTS.md＋specs＋memory-bank）を、3エージェントがアダプタ越しに読み書きする」</strong>
+    ―― これさえ守れば、どのプロジェクト・どのタスク・どのエージェントでも、深掘り→仕様→実装→引き継ぎの同じ流れで開発できます。
+  </div>
+</section>
+
+<!-- ===================== 11. REFS ===================== -->
+<section id="refs">
+  <div class="sec-head"><span class="sec-num">11</span><h2>出典</h2></div>
+  <p class="sec-sub">2026年6月時点の公開情報。付随キット spec-driven-handoff-kit と対で使う。</p>
+  <ul class="clean">
+    <li><strong>仕様駆動</strong>：<a href="https://github.com/github/spec-kit">GitHub Spec Kit</a>（29連携・<code>specify init --integration</code>）／ <a href="https://github.com/gotalab/cc-sdd">cc-sdd</a>（クロスエージェントSDDハーネス）</li>
+    <li><strong>インタビュー深掘り</strong>：<a href="https://www.aihero.dev/my-grill-me-skill-has-gone-viral">grill-me（Matt Pocock）</a>／ <a href="https://github.com/satya-janghu/agent-skills/tree/main/skills/grill-me">agent-skills リポジトリ</a>（Agent Skills 形式）</li>
+    <li><strong>引き継ぎ・標準</strong>：<a href="https://developers.openai.com/codex/guides/agents-md">OpenAI Codex — AGENTS.md</a>／<a href="https://developers.openai.com/codex/memories">Codex Memories</a>／<a href="https://docs.github.com/en/copilot/concepts/agents/copilot-memory">GitHub Copilot Memory</a>／<a href="https://docs.github.com/copilot/customizing-copilot/adding-custom-instructions-for-github-copilot">Copilot custom instructions</a></li>
+    <li><strong>関連の自作資料</strong>：本シリーズの「Spec Kit 詳解」「セッション間引き継ぎ 詳解」「GitHub Copilot 引き継ぎ 詳解」</li>
+  </ul>
+  <p class="src">※ ツールの版でコマンド名・配置・既定値は変わり得ます。導入時に各公式の最新版を確認してください。</p>
+</section>
+
+<p style="text-align:center; color:var(--faint); font-size:13px; margin:40px 0 10px">― 以上 ―</p>
+
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <h4>このドキュメントについて</h4>
+    <p style="color:#C9C2B6">2026年6月時点の公開情報（GitHub Spec Kit、grill-me / Agent Skills、OpenAI Codex Docs、GitHub Copilot Docs）に基づき作成。付随する構築キット（spec-driven-handoff-kit）と対で使えます。コマンド名・配置はツールの版で変わり得るため、導入時に各公式の最新版を確認してください。</p>
+  </div>
+</footer>
+
+</body>
+</html>

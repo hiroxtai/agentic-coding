@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>コーディングエージェント開発手法ガイド（2026年6月版）</title>
+<style>
+  :root{
+    --bg:#F4EFE7; --surface:#FFFFFF; --surface-2:#FBF8F3;
+    --ink:#1C1B18; --muted:#6E6960; --faint:#9B958B;
+    --accent:#C15F3C; --accent-deep:#A84A2A; --accent-soft:#F2DBCF;
+    --line:#E5DDD1; --line-strong:#D6CCBD;
+    --good:#3F7D54; --good-soft:#E0EEE3;
+    --warn:#B8860B; --warn-soft:#F6ECCF;
+    --info:#3A6B8C; --info-soft:#DEEAF1;
+    --violet:#6A5099; --violet-soft:#E8E1F2;
+    --shadow:0 1px 2px rgba(40,30,20,.04),0 8px 24px rgba(40,30,20,.06);
+    --radius:16px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    line-height:1.85; font-size:16.5px; letter-spacing:.01em;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:980px; margin:0 auto; padding:0 22px}
+  h1,h2,h3,h4{line-height:1.4; letter-spacing:.005em}
+
+  /* HERO */
+  .hero{
+    background:
+      radial-gradient(120% 140% at 85% -10%, rgba(193,95,60,.18), transparent 55%),
+      radial-gradient(110% 130% at -10% 0%, rgba(58,107,140,.12), transparent 50%),
+      linear-gradient(180deg,#211F1B 0%, #2C2823 100%);
+    color:#F4EFE7; padding:64px 0 56px; position:relative; overflow:hidden;
+  }
+  .hero .wrap{position:relative; z-index:2}
+  .kicker{
+    display:inline-block; font-size:12.5px; letter-spacing:.18em; text-transform:uppercase;
+    color:#E6BBA6; border:1px solid rgba(230,187,166,.4); padding:5px 12px; border-radius:999px; margin-bottom:22px;
+  }
+  .hero h1{font-size:38px; margin:0 0 16px; font-weight:800; letter-spacing:0}
+  .hero h1 .em{color:#E89B79}
+  .hero p.lead{font-size:17.5px; color:#D9D2C7; max-width:760px; margin:0 0 26px}
+  .hero .meta{display:flex; flex-wrap:wrap; gap:10px 22px; font-size:13.5px; color:#B9B2A6}
+  .hero .meta b{color:#E6BBA6; font-weight:600}
+  .hero-figs{display:flex; flex-wrap:wrap; gap:10px; margin-top:30px}
+  .chip{
+    background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12);
+    padding:7px 14px; border-radius:999px; font-size:13px; color:#EFE8DC;
+  }
+  .chip b{color:#E89B79; font-weight:700}
+
+  /* SECTION SHELL */
+  section{padding:46px 0 8px}
+  .sec-head{display:flex; align-items:baseline; gap:14px; margin-bottom:8px}
+  .sec-num{
+    font-size:13px; font-weight:800; color:var(--accent); letter-spacing:.1em;
+    border:1.5px solid var(--accent-soft); background:var(--surface);
+    border-radius:8px; padding:3px 9px; white-space:nowrap;
+  }
+  h2{font-size:26px; margin:0; font-weight:800}
+  .sec-sub{color:var(--muted); font-size:15.5px; margin:6px 0 22px}
+  h3{font-size:19px; margin:30px 0 10px; font-weight:700}
+  h3 .tag{font-size:12px; font-weight:700; color:#fff; background:var(--accent); padding:2px 8px; border-radius:6px; vertical-align:middle; margin-left:8px; letter-spacing:.04em}
+  p{margin:0 0 16px}
+  a{color:var(--accent-deep); text-decoration:none; border-bottom:1px solid var(--accent-soft)}
+  a:hover{border-bottom-color:var(--accent)}
+  strong{font-weight:700}
+  .em-ink{color:var(--accent-deep); font-weight:700}
+
+  /* CARDS & CALLOUTS */
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:24px 26px; box-shadow:var(--shadow); margin:20px 0}
+  .callout{border-radius:14px; padding:16px 20px; margin:20px 0; font-size:15.5px; border:1px solid}
+  .callout .ttl{font-weight:800; font-size:14px; letter-spacing:.04em; margin-bottom:6px; display:flex; align-items:center; gap:8px}
+  .c-key{background:var(--accent-soft); border-color:#E7C3B2; color:#5e2a17}
+  .c-key .ttl{color:var(--accent-deep)}
+  .c-info{background:var(--info-soft); border-color:#C5DAE7; color:#274558}
+  .c-info .ttl{color:var(--info)}
+  .c-good{background:var(--good-soft); border-color:#BFDDC7; color:#234b30}
+  .c-good .ttl{color:var(--good)}
+  .c-warn{background:var(--warn-soft); border-color:#E8D49A; color:#5c4708}
+  .c-warn .ttl{color:#8a6608}
+
+  /* TOC */
+  .toc{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:22px 26px; box-shadow:var(--shadow); margin:30px 0 6px}
+  .toc h4{margin:0 0 14px; font-size:13px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted)}
+  .toc ol{margin:0; padding:0; list-style:none; counter-reset:t; display:grid; grid-template-columns:1fr 1fr; gap:6px 28px}
+  .toc li{counter-increment:t; font-size:15px; padding:5px 0; border-bottom:1px dashed var(--line)}
+  .toc li a{border:0; color:var(--ink); display:flex; gap:10px; align-items:baseline}
+  .toc li a:hover{color:var(--accent-deep)}
+  .toc li a::before{content:counter(t,decimal-leading-zero); color:var(--accent); font-weight:800; font-size:12.5px; min-width:22px}
+
+  /* TABLES */
+  .tbl-wrap{overflow-x:auto; margin:20px 0; border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow)}
+  table{border-collapse:collapse; width:100%; font-size:14.5px; background:var(--surface)}
+  th,td{text-align:left; padding:12px 16px; border-bottom:1px solid var(--line); vertical-align:top}
+  thead th{background:var(--surface-2); font-weight:700; color:var(--ink); font-size:13.5px; letter-spacing:.02em; border-bottom:2px solid var(--line-strong)}
+  tbody tr:last-child td{border-bottom:0}
+  tbody tr:hover{background:var(--surface-2)}
+  td.method{font-weight:700; color:var(--accent-deep); white-space:nowrap}
+  .pill{display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px; letter-spacing:.03em}
+  .p-low{background:var(--good-soft); color:var(--good)}
+  .p-mid{background:var(--warn-soft); color:#8a6608}
+  .p-high{background:#F4D9CF; color:var(--accent-deep)}
+
+  /* FIGURE */
+  figure{margin:24px 0; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:22px 20px 14px; box-shadow:var(--shadow)}
+  figure svg{display:block; width:100%; height:auto}
+  figcaption{font-size:13px; color:var(--muted); text-align:center; margin-top:12px; padding-top:10px; border-top:1px dashed var(--line)}
+  figcaption b{color:var(--accent-deep)}
+
+  /* LISTS */
+  ul.clean{margin:6px 0 18px; padding:0; list-style:none}
+  ul.clean li{position:relative; padding:4px 0 4px 26px; font-size:15.5px}
+  ul.clean li::before{content:""; position:absolute; left:6px; top:14px; width:7px; height:7px; border-radius:2px; background:var(--accent); transform:rotate(45deg)}
+  ol.steps{margin:8px 0 18px; padding-left:0; list-style:none; counter-reset:s}
+  ol.steps li{counter-increment:s; position:relative; padding:8px 0 8px 44px; font-size:15.5px; border-bottom:1px dashed var(--line)}
+  ol.steps li:last-child{border-bottom:0}
+  ol.steps li::before{content:counter(s); position:absolute; left:0; top:8px; width:28px; height:28px; background:var(--accent-soft); color:var(--accent-deep); font-weight:800; font-size:13px; border-radius:8px; display:flex; align-items:center; justify-content:center}
+
+  code{background:var(--surface-2); border:1px solid var(--line); border-radius:6px; padding:1.5px 6px; font-family:"SF Mono",Menlo,Consolas,monospace; font-size:13.5px; color:var(--accent-deep)}
+  .src{font-size:13px; color:var(--muted)}
+  .src a{color:var(--muted); border-bottom:1px dotted var(--line-strong)}
+
+  /* divider */
+  .div{height:1px; background:linear-gradient(90deg,transparent,var(--line-strong),transparent); margin:8px 0}
+
+  footer{margin-top:50px; background:#211F1B; color:#C9C2B6; padding:40px 0}
+  footer .wrap{font-size:14px}
+  footer h4{color:#E6BBA6; margin:0 0 10px; font-size:13px; letter-spacing:.1em; text-transform:uppercase}
+  footer a{color:#D9B6A4; border-bottom:1px solid rgba(217,182,164,.3)}
+  .ref{font-size:13.5px; padding:7px 0; border-bottom:1px solid rgba(255,255,255,.07); line-height:1.6}
+  .ref b{color:#EFE8DC}
+
+  @media(max-width:680px){
+    .hero h1{font-size:29px}
+    h2{font-size:22px}
+    .toc ol{grid-template-columns:1fr}
+    body{font-size:16px}
+    .wrap{padding:0 16px}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="kicker">Agentic Coding · State of the Practice</span>
+    <h1>コーディングエージェントを用いた<br><span class="em">開発手法</span>ガイド</h1>
+    <p class="lead">2026年6月時点で「有益」とされるAIコーディングエージェント活用の開発手法を、Anthropic公式のエンジニアリング資料を軸に体系的に整理しました。各手法の「何を・なぜ・いつ使うか」を図解とともに解説します。</p>
+    <div class="meta">
+      <span><b>対象期間</b> 2026年6月</span>
+      <span><b>主軸</b> Anthropic 公式（Claude Code / Agent SDK）</span>
+      <span><b>視点</b> 網羅的・実務適用</span>
+    </div>
+    <div class="hero-figs">
+      <span class="chip"><b>6</b> つの中核手法</span>
+      <span class="chip"><b>1</b> つの土台：コンテキストエンジニアリング</span>
+      <span class="chip"><b>5</b> つの横断ベストプラクティス</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <nav class="toc" aria-label="目次">
+    <h4>目次</h4>
+    <ol>
+      <li><a href="#intro">全体像 ― なぜ「手法」が必要なのか</a></li>
+      <li><a href="#foundation">土台：コンテキストエンジニアリング</a></li>
+      <li><a href="#map">手法マップ（俯瞰図）</a></li>
+      <li><a href="#epcc">探索→計画→実装→コミット（プランモード）</a></li>
+      <li><a href="#spec">仕様駆動開発（Spec-Driven Development）</a></li>
+      <li><a href="#minimal">最小コンテキスト指示（余計な情報を伝えない）</a></li>
+      <li><a href="#handoff">セッション間引き継ぎ（ADR / メモリ駆動）</a></li>
+      <li><a href="#longrun">長時間タスク（Long-Running Agents）</a></li>
+      <li><a href="#multiagent">マルチエージェント・動的ワークフロー</a></li>
+      <li><a href="#crosscut">横断ベストプラクティス</a></li>
+      <li><a href="#choose">手法の使い分け</a></li>
+      <li><a href="#refs">出典・参考文献</a></li>
+    </ol>
+  </nav>
+
+<!-- ===================== 1. INTRO ===================== -->
+<section id="intro">
+  <div class="sec-head"><span class="sec-num">01</span><h2>全体像 ― なぜ「手法」が必要なのか</h2></div>
+  <p class="sec-sub">手法の違いは「好み」ではなく、エージェントの制約への対処法の違いである。</p>
+
+  <p>2026年6月時点で、Claude Code をはじめとするコーディングエージェントは「質問に答えて待つチャットボット」から「ファイルを読み、コマンドを実行し、自律的に問題を解決する実行環境」へと位置づけが変わりました。あなたは自分でコードを書く代わりに<strong>「何が欲しいか」を記述し、エージェントが探索・計画・実装を行う</strong>──この前提の転換が、新しい開発手法を次々に生んでいます。</p>
+
+  <p>一見ばらばらに見える各手法（プランモード、仕様駆動、ADR駆動、最小コンテキスト、長時間タスク…）は、実は<strong>たった一つの制約</strong>への異なる対処として理解できます。それが<span class="em-ink">「コンテキストウィンドウは有限であり、埋まるほど性能が劣化する」</span>という事実です。Anthropic の公式ベストプラクティスも、ほとんどの推奨事項はこの一点に基づくと明言しています。</p>
+
+  <div class="callout c-key">
+    <div class="ttl">◆ この資料の読み方</div>
+    まず <strong>「土台（02章）」</strong> でエージェント共通の制約を押さえ、次に <strong>6つの中核手法（04〜09章）</strong> を「単一セッション系 → 引き継ぎ系 → スケール系」の順に見ていきます。最後に <strong>横断的なベストプラクティス（10章）</strong> と <strong>使い分けの指針（11章）</strong> でまとめます。
+  </div>
+</section>
+
+<!-- ===================== 2. FOUNDATION ===================== -->
+<section id="foundation">
+  <div class="sec-head"><span class="sec-num">02</span><h2>土台：コンテキストエンジニアリング</h2></div>
+  <p class="sec-sub">すべての手法が立脚する共通原理。プロンプトエンジニアリングの次に来た考え方。</p>
+
+  <p>Anthropic は2025年9月の記事で、<strong>コンテキストエンジニアリング（context engineering）</strong>を「プロンプトエンジニアリングの自然な進化形」と定義しました。プロンプト（指示文）だけでなく、システムプロンプト・ツール定義・MCP・外部データ・会話履歴を含む<strong>コンテキスト全体を、推論のたびに最適にキュレーションする技術</strong>です。</p>
+
+  <h3>なぜ「少ないほど良い」のか ― 注意の予算とコンテキストの腐敗</h3>
+  <p>LLM は人間と同じく、扱う情報が増えると焦点を失います。トークン数が増えるほど情報の正確な想起能力が落ちる現象は <strong>「コンテキストの腐敗（context rot）」</strong> と呼ばれます。これは Transformer の構造（n個のトークンで n² の関係を扱う）に由来する、すべてのモデルに共通する性質です。つまりコンテキストは<strong>「使えば減る有限の注意の予算（attention budget）」</strong>として扱うべきものです。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="コンテキスト量と性能の関係を示すグラフ">
+      <!-- axes -->
+      <line x1="70" y1="40" x2="70" y2="240" stroke="#D6CCBD" stroke-width="2"/>
+      <line x1="70" y1="240" x2="800" y2="240" stroke="#D6CCBD" stroke-width="2"/>
+      <text x="58" y="46" text-anchor="end" font-size="12" fill="#6E6960">高</text>
+      <text x="58" y="238" text-anchor="end" font-size="12" fill="#6E6960">低</text>
+      <text x="34" y="150" text-anchor="middle" font-size="13" fill="#1C1B18" font-weight="700" transform="rotate(-90,34,150)">性能・想起精度</text>
+      <text x="435" y="270" text-anchor="middle" font-size="13" fill="#1C1B18" font-weight="700">コンテキスト窓に詰め込んだトークン量 →</text>
+      <!-- ideal flat zone -->
+      <path d="M70,80 C200,82 280,90 360,108" fill="none" stroke="#3F7D54" stroke-width="3"/>
+      <!-- degradation curve -->
+      <path d="M360,108 C470,135 560,180 800,224" fill="none" stroke="#C15F3C" stroke-width="3"/>
+      <!-- sweet spot marker -->
+      <circle cx="200" cy="82" r="5" fill="#3F7D54"/>
+      <rect x="120" y="48" width="170" height="24" rx="6" fill="#E0EEE3" stroke="#BFDDC7"/>
+      <text x="205" y="64" text-anchor="middle" font-size="12" fill="#234b30" font-weight="700">高シグナルの最小集合</text>
+      <!-- rot zone -->
+      <rect x="430" y="150" width="40" height="90" fill="#F4D9CF" opacity="0.5"/>
+      <rect x="470" y="150" width="330" height="90" fill="#F4D9CF" opacity="0.3"/>
+      <text x="640" y="180" text-anchor="middle" font-size="12.5" fill="#A84A2A" font-weight="700">コンテキストの腐敗ゾーン</text>
+      <text x="640" y="200" text-anchor="middle" font-size="11.5" fill="#A84A2A">指示忘れ・誤り・脱線が増える</text>
+      <!-- dashed drop -->
+      <line x1="360" y1="108" x2="360" y2="240" stroke="#9B958B" stroke-width="1.2" stroke-dasharray="4 4"/>
+      <text x="360" y="256" text-anchor="middle" font-size="11" fill="#6E6960">劣化の変曲点</text>
+    </svg>
+    <figcaption><b>図1</b>：性能は「崖」ではなく「勾配」で落ちる。だが<b>最小の高シグナル集合</b>を保つことが、どの手法にも共通する最重要原則。</figcaption>
+  </figure>
+
+  <p>したがって、良いコンテキスト設計とは<strong>「望む結果を得る確率を最大化する、最小の高シグナルなトークン集合を見つけること」</strong>です。ただし<strong>「最小＝短い」ではありません</strong>。必要な情報は十分に与えたうえで、ノイズを削るという意味です。この「ちょうど良い高度（right altitude）」の感覚が、後述するすべての手法の判断軸になります。</p>
+
+  <h3>長時間タスクを支える3つの基本テクニック</h3>
+  <p>1回のコンテキスト窓を超える長い作業（大規模移行、包括的な調査など）のために、Anthropic は3つの技術を挙げています。これらは04章以降の具体的手法の「部品」になります。</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>テクニック</th><th>内容</th><th>得意な場面</th></tr></thead>
+      <tbody>
+        <tr><td class="method">コンパクション<br>Compaction</td><td>窓が一杯に近づいたら会話を要約し、新しい窓を要約から再開。Claude Code は重要な設計判断・未解決バグ・実装詳細を残し、冗長なツール出力を捨てる。</td><td>往復の多い対話的タスク</td></tr>
+        <tr><td class="method">構造化ノート<br>Note-taking</td><td>コンテキスト窓の外（<code>NOTES.md</code> やTODOリスト等）に進捗を書き出し、後で読み戻す「エージェントの記憶」。</td><td>明確なマイルストーンのある反復開発</td></tr>
+        <tr><td class="method">サブエージェント<br>Sub-agents</td><td>専門サブエージェントがクリーンな窓で深掘りし、要約（1,000〜2,000トークン）だけを親に返す。詳細な探索コンテキストを隔離。</td><td>並列探索が効く調査・分析</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout c-info">
+    <div class="ttl">▶ ジャストインタイム検索という発想</div>
+    全データを事前に読み込むのではなく、ファイルパスやクエリなどの<strong>軽量な参照だけを保持</strong>し、必要なときに <code>grep</code> や <code>head</code> で実行時に取得する。Claude Code が <code>CLAUDE.md</code> を起動時に読みつつ、ファイル本体は <code>glob/grep</code> で都度取得するのはこのハイブリッド戦略の好例です。
+  </div>
+</section>
+
+<!-- ===================== 3. MAP ===================== -->
+<section id="map">
+  <div class="sec-head"><span class="sec-num">03</span><h2>手法マップ（俯瞰図）</h2></div>
+  <p class="sec-sub">6つの中核手法は「土台の上に積み上がり、横断的な実践に支えられる」という構造で理解できる。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 470" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="開発手法の全体マップ">
+      <defs>
+        <style>
+          .lbl{font-family:"Hiragino Sans",system-ui,sans-serif;}
+          .h{font-weight:800;}
+        </style>
+      </defs>
+
+      <!-- TOP BAND: cross-cutting -->
+      <rect x="20" y="20" width="820" height="60" rx="12" fill="#211F1B"/>
+      <text x="40" y="45" class="lbl h" font-size="13" fill="#E6BBA6">横断ベストプラクティス（10章）</text>
+      <text x="40" y="65" class="lbl" font-size="12.5" fill="#D9D2C7">検証で締める　·　早めの軌道修正　·　コンテキスト管理（/clear・compaction）　·　敵対的レビュー</text>
+      <!-- arrows down -->
+      <path d="M430,80 L430,100" stroke="#9B958B" stroke-width="2" marker-end="url(#a)"/>
+
+      <!-- MIDDLE: three category columns -->
+      <!-- col1: 計画系 -->
+      <rect x="20" y="108" width="262" height="210" rx="12" fill="#FFFFFF" stroke="#E5DDD1"/>
+      <rect x="20" y="108" width="262" height="34" rx="12" fill="#DEEAF1"/>
+      <rect x="20" y="124" width="262" height="18" fill="#DEEAF1"/>
+      <text x="151" y="131" text-anchor="middle" class="lbl h" font-size="13.5" fill="#274558">計画系（単一セッション）</text>
+      <rect x="40" y="158" width="222" height="64" rx="9" fill="#FBF8F3" stroke="#E5DDD1"/>
+      <text x="52" y="182" class="lbl h" font-size="13.5" fill="#A84A2A">04 プランモード（探索→計画→実装→コミット）</text>
+      <text x="52" y="202" class="lbl" font-size="11.5" fill="#6E6960">読み取り専用で計画を固めてから実装</text>
+      <rect x="40" y="234" width="222" height="64" rx="9" fill="#FBF8F3" stroke="#E5DDD1"/>
+      <text x="52" y="258" class="lbl h" font-size="13.5" fill="#A84A2A">05 仕様駆動開発（SDD）</text>
+      <text x="52" y="278" class="lbl" font-size="11.5" fill="#6E6960">仕様(SPEC)を真実の源とし、コードを生成</text>
+
+      <!-- col2: 引き継ぎ系 -->
+      <rect x="299" y="108" width="262" height="210" rx="12" fill="#FFFFFF" stroke="#E5DDD1"/>
+      <rect x="299" y="108" width="262" height="34" rx="12" fill="#E8E1F2"/>
+      <rect x="299" y="124" width="262" height="18" fill="#E8E1F2"/>
+      <text x="430" y="131" text-anchor="middle" class="lbl h" font-size="13.5" fill="#4a3a72">記憶・引き継ぎ系</text>
+      <rect x="319" y="158" width="222" height="64" rx="9" fill="#FBF8F3" stroke="#E5DDD1"/>
+      <text x="331" y="182" class="lbl h" font-size="13.5" fill="#A84A2A">06 最小コンテキスト指示</text>
+      <text x="331" y="202" class="lbl" font-size="11.5" fill="#6E6960">余計を伝えず、必要十分だけを渡す</text>
+      <rect x="319" y="234" width="222" height="64" rx="9" fill="#FBF8F3" stroke="#E5DDD1"/>
+      <text x="331" y="258" class="lbl h" font-size="13.5" fill="#A84A2A">07 ADR / メモリ駆動</text>
+      <text x="331" y="278" class="lbl" font-size="11.5" fill="#6E6960">決定記録・CLAUDE.mdで窓を越えて継承</text>
+
+      <!-- col3: スケール系 -->
+      <rect x="578" y="108" width="262" height="210" rx="12" fill="#FFFFFF" stroke="#E5DDD1"/>
+      <rect x="578" y="108" width="262" height="34" rx="12" fill="#F2DBCF"/>
+      <rect x="578" y="124" width="262" height="18" fill="#F2DBCF"/>
+      <text x="709" y="131" text-anchor="middle" class="lbl h" font-size="13.5" fill="#A84A2A">スケール系（長時間・並列）</text>
+      <rect x="598" y="158" width="222" height="64" rx="9" fill="#FBF8F3" stroke="#E5DDD1"/>
+      <text x="610" y="182" class="lbl h" font-size="13.5" fill="#A84A2A">08 長時間タスク・ハーネス</text>
+      <text x="610" y="202" class="lbl" font-size="11.5" fill="#6E6960">初期化役＋実装役で数時間〜数日を走破</text>
+      <rect x="598" y="234" width="222" height="64" rx="9" fill="#FBF8F3" stroke="#E5DDD1"/>
+      <text x="610" y="258" class="lbl h" font-size="13.5" fill="#A84A2A">09 マルチエージェント / 動的WF</text>
+      <text x="610" y="278" class="lbl" font-size="11.5" fill="#6E6960">数十〜数百の並列サブエージェント</text>
+
+      <!-- arrow up from foundation -->
+      <path d="M430,388 L430,326" stroke="#9B958B" stroke-width="2" marker-end="url(#a)"/>
+
+      <!-- BOTTOM BAND: foundation -->
+      <rect x="20" y="392" width="820" height="58" rx="12" fill="#C15F3C"/>
+      <text x="430" y="418" text-anchor="middle" class="lbl h" font-size="14.5" fill="#FFFFFF">土台：コンテキストエンジニアリング（02章）</text>
+      <text x="430" y="438" text-anchor="middle" class="lbl" font-size="12" fill="#F2DBCF">注意の予算は有限 ／ 高シグナルの最小集合 ／ ちょうど良い高度</text>
+
+      <defs>
+        <marker id="a" markerWidth="9" markerHeight="9" refX="4.5" refY="4.5" orient="auto">
+          <path d="M0,0 L9,4.5 L0,9 Z" fill="#9B958B"/>
+        </marker>
+      </defs>
+    </svg>
+    <figcaption><b>図2</b>：手法は対立しない。タスクの規模・期間・並列性に応じて<b>組み合わせて使う</b>のが2026年の実務。</figcaption>
+  </figure>
+
+  <div class="callout c-good">
+    <div class="ttl">✔ 重要な前提</div>
+    これらは「どれか1つを選ぶ」ものではありません。たとえば<strong>「プランモードで仕様を固め（04）、SPEC.mdに書き出し（05）、新セッションで最小コンテキストで実装し（06）、進捗ファイルで引き継ぐ（07）」</strong>のように連結するのが典型的な使い方です。
+  </div>
+</section>
+
+<!-- ===================== 4. EPCC ===================== -->
+<section id="epcc">
+  <div class="sec-head"><span class="sec-num">04</span><h2>探索→計画→実装→コミット（プランモード）</h2></div>
+  <p class="sec-sub">Anthropic公式が推奨する最も基本的な4フェーズ・ワークフロー。「間違った問題を解く」事故を防ぐ。</p>
+
+  <p>エージェントにいきなりコードを書かせると、<strong>「間違った問題を解いたコード」</strong>が生まれがちです。そこで Claude Code の<strong>プランモード（読み取り専用）</strong>を使い、探索と実行を分離します。公式が勧める流れは次の4段階です。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="探索・計画・実装・コミットの4フェーズ">
+      <defs>
+        <marker id="ar" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#C15F3C"/></marker>
+      </defs>
+      <!-- read-only band -->
+      <rect x="20" y="34" width="410" height="150" rx="12" fill="#DEEAF1" opacity="0.45"/>
+      <text x="225" y="22" text-anchor="middle" font-size="12" font-weight="700" fill="#274558">◀ 読み取り専用（プランモード）＝ディスクに変更なし ▶</text>
+      <rect x="430" y="34" width="410" height="150" rx="12" fill="#E0EEE3" opacity="0.45"/>
+      <text x="635" y="22" text-anchor="middle" font-size="12" font-weight="700" fill="#234b30">◀ 実行モード ▶</text>
+
+      <!-- 4 phases -->
+      <g font-family="Hiragino Sans,system-ui,sans-serif">
+        <!-- explore -->
+        <rect x="40" y="64" width="170" height="92" rx="11" fill="#FFFFFF" stroke="#C5DAE7" stroke-width="1.5"/>
+        <circle cx="62" cy="88" r="13" fill="#3A6B8C"/><text x="62" y="93" text-anchor="middle" font-size="13" font-weight="800" fill="#fff">1</text>
+        <text x="84" y="86" font-size="15" font-weight="800" fill="#274558">探索 Explore</text>
+        <text x="56" y="115" font-size="11.5" fill="#4a4a4a">関連ファイルを読み、</text>
+        <text x="56" y="132" font-size="11.5" fill="#4a4a4a">仕組みを理解する。</text>
+        <text x="56" y="149" font-size="11" fill="#9B958B">まだ書かない</text>
+        <!-- plan -->
+        <rect x="240" y="64" width="170" height="92" rx="11" fill="#FFFFFF" stroke="#C5DAE7" stroke-width="1.5"/>
+        <circle cx="262" cy="88" r="13" fill="#3A6B8C"/><text x="262" y="93" text-anchor="middle" font-size="13" font-weight="800" fill="#fff">2</text>
+        <text x="284" y="86" font-size="15" font-weight="800" fill="#274558">計画 Plan</text>
+        <text x="256" y="115" font-size="11.5" fill="#4a4a4a">変更ファイル・手順を</text>
+        <text x="256" y="132" font-size="11.5" fill="#4a4a4a">詳細な計画に。人が</text>
+        <text x="256" y="149" font-size="11" fill="#9B958B">レビュー・修正できる</text>
+        <!-- implement -->
+        <rect x="450" y="64" width="170" height="92" rx="11" fill="#FFFFFF" stroke="#BFDDC7" stroke-width="1.5"/>
+        <circle cx="472" cy="88" r="13" fill="#3F7D54"/><text x="472" y="93" text-anchor="middle" font-size="13" font-weight="800" fill="#fff">3</text>
+        <text x="494" y="86" font-size="15" font-weight="800" fill="#234b30">実装 Implement</text>
+        <text x="466" y="115" font-size="11.5" fill="#4a4a4a">計画に沿って実装し、</text>
+        <text x="466" y="132" font-size="11.5" fill="#4a4a4a">テストを書いて走らせ</text>
+        <text x="466" y="149" font-size="11" fill="#9B958B">計画と照合し検証</text>
+        <!-- commit -->
+        <rect x="650" y="64" width="170" height="92" rx="11" fill="#FFFFFF" stroke="#BFDDC7" stroke-width="1.5"/>
+        <circle cx="672" cy="88" r="13" fill="#3F7D54"/><text x="672" y="93" text-anchor="middle" font-size="13" font-weight="800" fill="#fff">4</text>
+        <text x="694" y="86" font-size="15" font-weight="800" fill="#234b30">コミット Commit</text>
+        <text x="666" y="115" font-size="11.5" fill="#4a4a4a">説明的メッセージで</text>
+        <text x="666" y="132" font-size="11.5" fill="#4a4a4a">コミットし、PRを</text>
+        <text x="666" y="149" font-size="11" fill="#9B958B">作成する</text>
+      </g>
+      <!-- arrows -->
+      <path d="M212,110 L238,110" stroke="#C15F3C" stroke-width="2.2" marker-end="url(#ar)"/>
+      <path d="M412,110 L448,110" stroke="#C15F3C" stroke-width="2.6" marker-end="url(#ar)"/>
+      <path d="M622,110 L648,110" stroke="#C15F3C" stroke-width="2.2" marker-end="url(#ar)"/>
+      <text x="430" y="206" text-anchor="middle" font-size="11.5" fill="#A84A2A" font-weight="700">↑ ここでモードを切り替える（計画の承認）</text>
+    </svg>
+    <figcaption><b>図3</b>：探索と実装を分離するのが核心。計画は <code>Ctrl+G</code> でエディタを開いて直接編集してから承認できる。</figcaption>
+  </figure>
+
+  <h3>仕様を「インタビュー」で詰める応用</h3>
+  <p>大きめの機能では、最小限のプロンプトから始めて<strong>エージェントに逆質問させる</strong>のが有効です。公式は次のようなプロンプトを推奨しています。</p>
+  <div class="card" style="background:var(--surface-2)">
+    <p style="margin:0; font-size:14.5px; color:#3a3a3a">「<strong>[簡単な説明]</strong> を作りたい。<code>AskUserQuestion</code> ツールで私に詳しくインタビューして。技術実装・UI/UX・エッジケース・トレードオフについて、私が見落としている難所を掘り下げて。すべて網羅したら <code>SPEC.md</code> に完全な仕様を書き出して」</p>
+  </div>
+  <p>仕様が完成したら<strong>新しいセッションを開始して実装に移ります</strong>。新セッションは実装だけにクリーンなコンテキストを使え、参照すべき仕様書も手元にある──これが05章の仕様駆動開発への橋渡しになります。</p>
+
+  <div class="callout c-warn">
+    <div class="ttl">⚠ プランモードを使わない方が良い場面</div>
+    計画にはオーバーヘッドがあります。<strong>スコープが明確で修正が小さいとき</strong>（タイポ修正、ログ追加、変数リネーム）は直接やらせるべきです。公式の目安は<strong>「差分を1文で説明できるなら計画は省略する」</strong>。計画が活きるのは、アプローチが不確実・複数ファイルに及ぶ・対象コードに不慣れな場合です。
+  </div>
+</section>
+
+<!-- ===================== 5. SPEC-DRIVEN ===================== -->
+<section id="spec">
+  <div class="sec-head"><span class="sec-num">05</span><h2>仕様駆動開発（Spec-Driven Development）</h2></div>
+  <p class="sec-sub">コードではなく「実行可能な仕様」を真実の源にする。2026年に主要ツールが軒並み採用した方法論。</p>
+
+  <p>仕様駆動開発（SDD）は、<strong>コードではなく詳細な仕様こそが真実の源（source of truth）</strong>とする方法論です。まず「システムが何をすべきか」を記述した仕様を書き、そこから実装計画を導き、原子的なタスクに分解し、<strong>最後にコードを生成</strong>します。2025年に「vibe coding」（意図から逸れた・APIを幻覚する・規模とともに腐るコードを量産する失敗モード）への対抗として登場しました。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 270" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="仕様駆動開発のパイプライン">
+      <defs>
+        <marker id="ar2" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#6A5099"/></marker>
+      </defs>
+      <g font-family="Hiragino Sans,system-ui,sans-serif">
+        <!-- pipeline boxes -->
+        <rect x="28" y="60" width="172" height="80" rx="11" fill="#E8E1F2"/>
+        <text x="114" y="92" text-anchor="middle" font-size="15" font-weight="800" fill="#4a3a72">① 仕様 Spec</text>
+        <text x="114" y="114" text-anchor="middle" font-size="11.5" fill="#5a4d7a">何を作るかを</text>
+        <text x="114" y="130" text-anchor="middle" font-size="11.5" fill="#5a4d7a">人＋AIで記述</text>
+
+        <rect x="244" y="60" width="172" height="80" rx="11" fill="#FFFFFF" stroke="#D6CCBD"/>
+        <text x="330" y="92" text-anchor="middle" font-size="15" font-weight="800" fill="#1C1B18">② 計画 Plan</text>
+        <text x="330" y="114" text-anchor="middle" font-size="11.5" fill="#6E6960">実装方針・</text>
+        <text x="330" y="130" text-anchor="middle" font-size="11.5" fill="#6E6960">アーキテクチャ導出</text>
+
+        <rect x="460" y="60" width="172" height="80" rx="11" fill="#FFFFFF" stroke="#D6CCBD"/>
+        <text x="546" y="92" text-anchor="middle" font-size="15" font-weight="800" fill="#1C1B18">③ タスク Tasks</text>
+        <text x="546" y="114" text-anchor="middle" font-size="11.5" fill="#6E6960">原子的な単位に</text>
+        <text x="546" y="130" text-anchor="middle" font-size="11.5" fill="#6E6960">分解</text>
+
+        <rect x="676" y="60" width="156" height="80" rx="11" fill="#E0EEE3" stroke="#BFDDC7"/>
+        <text x="754" y="92" text-anchor="middle" font-size="15" font-weight="800" fill="#234b30">④ コード Code</text>
+        <text x="754" y="114" text-anchor="middle" font-size="11.5" fill="#33694a">エージェントが</text>
+        <text x="754" y="130" text-anchor="middle" font-size="11.5" fill="#33694a">生成・実装</text>
+      </g>
+      <path d="M202,100 L242,100" stroke="#6A5099" stroke-width="2.4" marker-end="url(#ar2)"/>
+      <path d="M418,100 L458,100" stroke="#6A5099" stroke-width="2.4" marker-end="url(#ar2)"/>
+      <path d="M634,100 L674,100" stroke="#6A5099" stroke-width="2.4" marker-end="url(#ar2)"/>
+      <!-- feedback loop -->
+      <path d="M754,142 C754,200 330,205 200,160" fill="none" stroke="#9B958B" stroke-width="1.6" stroke-dasharray="5 5" marker-end="url(#ar2)"/>
+      <text x="430" y="225" text-anchor="middle" font-size="11.5" fill="#6E6960">不一致や不足があれば仕様へ戻す（仕様が常に正）</text>
+      <text x="40" y="40" font-size="12.5" font-weight="700" fill="#4a3a72">仕様が「真実の源」 ─ 修正は仕様側で行い、再生成する</text>
+    </svg>
+    <figcaption><b>図4</b>：「regenerate from scratch（最初から作り直し）」のループが激減するのが効果。GitHub Spec Kit はこれを約1桁削減と報告。</figcaption>
+  </figure>
+
+  <h3>3つの実装レベル</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>レベル</th><th>仕様とコードの関係</th><th>位置づけ</th></tr></thead>
+      <tbody>
+        <tr><td class="method">spec-first</td><td>仕様が生成を駆動し、コードは保守対象として残る</td><td>導入しやすい標準形</td></tr>
+        <tr><td class="method">spec-anchored</td><td>仕様とコードが共存し、相互に整合を取る</td><td>中間形</td></tr>
+        <tr><td class="method">spec-as-source</td><td>仕様が唯一の成果物、コードは完全に生成される</td><td>最も先鋭的</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>2026年のツール状況</h3>
+  <p>2026年までに主要なAIコーディングツールがそれぞれの流儀でSDDを実装しました：<strong>GitHub Spec Kit</strong>（オープンソースのツールキット）、<strong>AWS Kiro</strong>、Claude Code、Cursor、OpenSpec、BMAD、Tessl、Google Antigravity など。Red Hat や Microsoft が企業向けSDDガイドを公開する段階に入っています。AWS Kiro は「仕様を先に書いたことで、40時間規模の機能を人間8時間未満で出荷」した顧客事例を文書化しています。</p>
+
+  <div class="callout c-info">
+    <div class="ttl">▶ Claude Code での実践</div>
+    Claude Code には専用の「SDDモード」コマンドはありませんが、04章の<strong>「インタビュー → <code>SPEC.md</code>」</strong>がそのまま軽量なSDDになります。公式は「最も有用な仕様は<strong>自己完結的</strong>で、関係するファイルとインターフェースを名指しし、スコープ外を明記し、<strong>機能が動くことを証明するE2E検証ステップで締める</strong>」と述べています。
+  </div>
+</section>
+
+<!-- ===================== 6. MINIMAL CONTEXT ===================== -->
+<section id="minimal">
+  <div class="sec-head"><span class="sec-num">06</span><h2>最小コンテキスト指示（余計な情報を伝えない）</h2></div>
+  <p class="sec-sub">「賢いモデルには、指示しすぎない」。能力が上がるほど、過剰な指示はむしろ害になる。</p>
+
+  <p>「余計な情報は一切伝えずに開発を指示する」という手法は、02章のコンテキストエンジニアリングの直接の帰結です。Anthropic は<strong>「モデルが賢くなるほど、規定的なエンジニアリングは少なくて済み、エージェントはより自律的に動ける」</strong>と述べ、まず<strong>最小プロンプトを最良モデルで試し</strong>、失敗モードが見つかったときだけ指示や例を足していく進め方を勧めています。</p>
+
+  <h3>「ちょうど良い高度」を狙う</h3>
+  <p>システムプロンプトには<strong>失敗の両極</strong>があります。片方は複雑で脆いロジックをハードコードしすぎる極、もう片方は曖昧すぎて具体的な信号を欠く極。その中間が「ちょうど良い高度」です。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ちょうど良い高度のスペクトラム">
+      <!-- gradient bar -->
+      <defs>
+        <linearGradient id="grad" x1="0" x2="1">
+          <stop offset="0" stop-color="#C15F3C"/><stop offset="0.5" stop-color="#3F7D54"/><stop offset="1" stop-color="#3A6B8C"/>
+        </linearGradient>
+      </defs>
+      <rect x="40" y="80" width="780" height="16" rx="8" fill="url(#grad)" opacity="0.85"/>
+      <!-- left -->
+      <text x="40" y="62" font-size="13.5" font-weight="800" fill="#A84A2A">脆い・過剰</text>
+      <text x="40" y="124" font-size="12" fill="#6E6960">if-else を詰め込み、</text>
+      <text x="40" y="140" font-size="12" fill="#6E6960">あらゆるエッジケースを列挙</text>
+      <text x="40" y="156" font-size="11.5" fill="#9B958B">→ 保守不能・指示が埋もれる</text>
+      <!-- middle -->
+      <circle cx="430" cy="88" r="11" fill="#FFFFFF" stroke="#3F7D54" stroke-width="3"/>
+      <text x="430" y="58" text-anchor="middle" font-size="14.5" font-weight="800" fill="#234b30">ちょうど良い高度</text>
+      <text x="430" y="124" text-anchor="middle" font-size="12" fill="#33694a">挙動を導くには十分に具体的、</text>
+      <text x="430" y="140" text-anchor="middle" font-size="12" fill="#33694a">モデルに裁量を残すには十分に柔軟</text>
+      <!-- right -->
+      <text x="820" y="62" text-anchor="end" font-size="13.5" font-weight="800" fill="#274558">曖昧・不足</text>
+      <text x="820" y="124" text-anchor="end" font-size="12" fill="#6E6960">高レベルすぎる助言、</text>
+      <text x="820" y="140" text-anchor="end" font-size="12" fill="#6E6960">共有文脈を勝手に仮定</text>
+      <text x="820" y="156" text-anchor="end" font-size="11.5" fill="#9B958B">→ 具体的な信号を欠く</text>
+      <!-- pointer -->
+      <path d="M430,99 L430,112" stroke="#3F7D54" stroke-width="2"/>
+    </svg>
+    <figcaption><b>図5</b>：「最小＝短い」ではない。<b>期待する挙動を完全に示す最小の情報</b>を狙う。必要十分な情報は与えたうえでノイズを削る。</figcaption>
+  </figure>
+
+  <h3>なぜ効くのか ― 研究も裏づける</h3>
+  <ul class="clean">
+    <li><strong>クロス汚染を防ぐ</strong>：各ワーカーは「自分の仕事に必要なことだけ」を知る。ユーザー履歴や他エージェントの状況を渡さないことで、コンテキストが軽く保たれ、デバッグも容易になる（最小共有コンテキストの原則）。</li>
+    <li><strong>重要な制約が埋もれない</strong>：コンテキストは「テキスト量」ではない。有用なのは<strong>「良い答えの形を変える小さな詳細集合」</strong>。情報過多はそれを希釈し、モデルが鍵となる制約を無視する確率を上げる。</li>
+    <li><strong>TDDでの逆説的な事例</strong>：あるSKILL.mdを「107行の詳細な9フェーズTDD指示」から「20行の簡潔な指針（修正・grep・検証）」へ削ったところ、解決率が12%→50%へ約4倍に向上したという報告もある。指示しすぎは野心的すぎる修正と巻き込み事故を招いた。</li>
+  </ul>
+
+  <div class="callout c-warn">
+    <div class="ttl">⚠ 「伝えない」の正しい意味</div>
+    これは<strong>「丸投げ」ではありません</strong>。必要な制約・参照先・検証基準は明確に与えたうえで、<strong>モデルが自力で導ける情報（コードを読めば分かること等）を渡さない</strong>という意味です。<code>CLAUDE.md</code> に「コードを読めば分かること」を書くと、かえって本当に必要な指示が無視される、と公式も警告しています。
+  </div>
+</section>
+
+<!-- ===================== 7. HANDOFF ===================== -->
+<section id="handoff">
+  <div class="sec-head"><span class="sec-num">07</span><h2>セッション間引き継ぎ（ADR / メモリ駆動）</h2></div>
+  <p class="sec-sub">「毎シフト、記憶のない新人が来る」問題への対処。決定と進捗を外部に書き残し、窓を越えて継承する。</p>
+
+  <p>長時間エージェントの核心的な課題は、<strong>各セッションが前回の記憶ゼロで始まる</strong>ことです。Anthropic はこれを<strong>「シフト制で働くエンジニアが、毎回前のシフトの記憶なしで現れる」</strong>と喩えています。対処は一貫して<strong>「コンテキスト窓の外に成果物を書き残し、次のセッションが読み戻す」</strong>こと。その成果物には複数の種類があります。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="セッションをまたぐ情報の継承">
+      <defs>
+        <marker id="ar3" markerWidth="9" markerHeight="9" refX="4.5" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#3A6B8C"/></marker>
+      </defs>
+      <g font-family="Hiragino Sans,system-ui,sans-serif">
+        <!-- session windows -->
+        <rect x="30" y="30" width="200" height="80" rx="11" fill="#FBF8F3" stroke="#D6CCBD"/>
+        <text x="130" y="62" text-anchor="middle" font-size="14" font-weight="800" fill="#1C1B18">セッション 1</text>
+        <text x="130" y="84" text-anchor="middle" font-size="11" fill="#9B958B">窓が一杯になると終了</text>
+        <rect x="330" y="30" width="200" height="80" rx="11" fill="#FBF8F3" stroke="#D6CCBD"/>
+        <text x="430" y="62" text-anchor="middle" font-size="14" font-weight="800" fill="#1C1B18">セッション 2</text>
+        <text x="430" y="84" text-anchor="middle" font-size="11" fill="#9B958B">記憶ゼロで開始 → 読み戻す</text>
+        <rect x="630" y="30" width="200" height="80" rx="11" fill="#FBF8F3" stroke="#D6CCBD"/>
+        <text x="730" y="62" text-anchor="middle" font-size="14" font-weight="800" fill="#1C1B18">セッション 3 …</text>
+        <text x="730" y="84" text-anchor="middle" font-size="11" fill="#9B958B">継続</text>
+
+        <!-- persistent layer -->
+        <rect x="30" y="190" width="800" height="100" rx="13" fill="#DEEAF1" stroke="#C5DAE7"/>
+        <text x="48" y="216" font-size="13" font-weight="800" fill="#274558">永続レイヤー（コンテキスト窓の外に残す成果物）</text>
+        <rect x="48" y="228" width="180" height="48" rx="8" fill="#fff" stroke="#C5DAE7"/>
+        <text x="138" y="248" text-anchor="middle" font-size="12.5" font-weight="700" fill="#274558">CLAUDE.md / AGENTS.md</text>
+        <text x="138" y="266" text-anchor="middle" font-size="10.5" fill="#6E6960">規約・コマンド・方針</text>
+        <rect x="240" y="228" width="180" height="48" rx="8" fill="#fff" stroke="#C5DAE7"/>
+        <text x="330" y="248" text-anchor="middle" font-size="12.5" font-weight="700" fill="#274558">ADR / AgDR</text>
+        <text x="330" y="266" text-anchor="middle" font-size="10.5" fill="#6E6960">「なぜそう決めたか」の記録</text>
+        <rect x="432" y="228" width="180" height="48" rx="8" fill="#fff" stroke="#C5DAE7"/>
+        <text x="522" y="248" text-anchor="middle" font-size="12.5" font-weight="700" fill="#274558">進捗ファイル</text>
+        <text x="522" y="266" text-anchor="middle" font-size="10.5" fill="#6E6960">progress.txt / NOTES.md</text>
+        <rect x="624" y="228" width="186" height="48" rx="8" fill="#fff" stroke="#C5DAE7"/>
+        <text x="717" y="248" text-anchor="middle" font-size="12.5" font-weight="700" fill="#274558">git 履歴</text>
+        <text x="717" y="266" text-anchor="middle" font-size="10.5" fill="#6E6960">コミット＝復帰点</text>
+      </g>
+      <!-- write/read arrows -->
+      <path d="M130,112 L130,186" stroke="#3A6B8C" stroke-width="1.8" stroke-dasharray="4 4" marker-end="url(#ar3)"/>
+      <text x="150" y="155" font-size="10.5" fill="#3A6B8C">書き出す</text>
+      <path d="M400,188 L400,112" stroke="#3F7D54" stroke-width="1.8" stroke-dasharray="4 4" marker-end="url(#ar3)"/>
+      <text x="408" y="155" font-size="10.5" fill="#3F7D54">読み戻す</text>
+      <path d="M430,112 L430,186" stroke="#3A6B8C" stroke-width="1.8" stroke-dasharray="4 4" marker-end="url(#ar3)"/>
+      <path d="M700,188 L700,112" stroke="#3F7D54" stroke-width="1.8" stroke-dasharray="4 4" marker-end="url(#ar3)"/>
+      <path d="M730,112 L730,186" stroke="#3A6B8C" stroke-width="1.8" stroke-dasharray="4 4" marker-end="url(#ar3)"/>
+      <!-- session to session -->
+      <path d="M232,70 L328,70" stroke="#D6CCBD" stroke-width="2"/>
+      <path d="M532,70 L628,70" stroke="#D6CCBD" stroke-width="2"/>
+    </svg>
+    <figcaption><b>図6</b>：記憶は会話の中ではなく<b>ファイルシステムに置く</b>。次のセッションは永続レイヤーを読んで「現在地」を把握する。</figcaption>
+  </figure>
+
+  <h3>4種類の引き継ぎ成果物</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>成果物</th><th>役割</th><th>2026年の位置づけ</th></tr></thead>
+      <tbody>
+        <tr><td class="method">CLAUDE.md /<br>AGENTS.md</td><td>毎セッション冒頭で読まれる永続コンテキスト。ビルド/テストコマンド、コード規約、リポジトリ作法など「コードから推論できないこと」を記す。</td><td><strong>AGENTS.md</strong> は6万以上のリポジトリが使うツール横断の標準に。<code>/init</code>で雛形生成。</td></tr>
+        <tr><td class="method">ADR /<br>AgDR</td><td>アーキテクチャ上の決定と「なぜ」を記録。AIが過去の決定を再蒸し返すのを防ぐ。<strong>AgDR（Agent Decision Records）</strong>はAIの選択にも同じ厳密さを与える拡張。</td><td>「AIが決めたこと」も人間と同じ追跡可能性で残す動きが拡大。</td></tr>
+        <tr><td class="method">進捗ファイル</td><td><code>claude-progress.txt</code> / <code>NOTES.md</code> に「何をやったか」を逐次記録。02章の構造化ノートの具体形。</td><td>長時間ハーネス（08章）の必須部品。</td></tr>
+        <tr><td class="method">git 履歴</td><td>説明的なコミットメッセージ＝復帰可能な状態。悪い変更を revert でき、次のagentが履歴で経緯を追える。</td><td>「動く状態」を保証する命綱。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout c-warn">
+    <div class="ttl">⚠ CLAUDE.md は「短く」保つ</div>
+    公式の鉄則：各行について<strong>「これを消したらClaudeが間違えるか？」</strong>と問い、Noなら消す。肥大化したCLAUDE.mdは、本当に重要なルールがノイズに埋もれて<strong>無視される</strong>原因になります（06章と同じ原理）。頻繁に変わる情報・APIの詳細仕様は書かず、リンクで参照する。
+  </div>
+</section>
+
+<!-- ===================== 8. LONG-RUNNING ===================== -->
+<section id="longrun">
+  <div class="sec-head"><span class="sec-num">08</span><h2>長時間タスク（Long-Running Agents）</h2></div>
+  <p class="sec-sub">数時間〜数日のタスクを一気に走らせる。鍵は「初期化役」と「実装役」への役割分離と、1機能ずつの漸進。</p>
+
+  <p>Anthropic は2025年11月、Claude Agent SDK で<strong>多数のコンテキスト窓をまたいで一貫して進捗する</strong>ためのハーネス（足場）を公開しました。コンパクションだけでは不十分で、高レベルなプロンプト1つでは最前線モデルでも本番品質のWebアプリを作り切れない、という観察が出発点です。失敗は2パターン現れました。</p>
+
+  <ul class="clean">
+    <li><strong>一度に全部やろうとする</strong>（ワンショット狙い）→ 実装の途中でコンテキストが尽き、次のセッションが中途半端な状態を引き継ぐ。</li>
+    <li><strong>早すぎる「完成宣言」</strong> → 後続のagentが「進捗あり」を見て、まだ途中なのに完了とみなす。</li>
+  </ul>
+
+  <p>解決策は<strong>2つの役割への分離</strong>でした（※システムプロンプトやツールは同一で、最初のユーザープロンプトだけが異なる）。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="長時間エージェントのハーネス構造">
+      <defs>
+        <marker id="ar4" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#C15F3C"/></marker>
+        <marker id="ar4g" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#3F7D54"/></marker>
+      </defs>
+      <g font-family="Hiragino Sans,system-ui,sans-serif">
+        <!-- initializer -->
+        <rect x="28" y="40" width="240" height="280" rx="13" fill="#F2DBCF" stroke="#E7C3B2"/>
+        <text x="148" y="68" text-anchor="middle" font-size="15" font-weight="800" fill="#A84A2A">初期化エージェント</text>
+        <text x="148" y="86" text-anchor="middle" font-size="11.5" fill="#8a4427">最初の1回だけ・環境を整える</text>
+        <rect x="46" y="100" width="204" height="44" rx="8" fill="#fff" stroke="#E7C3B2"/>
+        <text x="58" y="120" font-size="12.5" font-weight="700" fill="#1C1B18">feature_list.json</text>
+        <text x="58" y="137" font-size="10.5" fill="#6E6960">全機能をE2E記述（例:200超）passes=false</text>
+        <rect x="46" y="152" width="204" height="40" rx="8" fill="#fff" stroke="#E7C3B2"/>
+        <text x="58" y="171" font-size="12.5" font-weight="700" fill="#1C1B18">claude-progress.txt</text>
+        <text x="58" y="186" font-size="10.5" fill="#6E6960">進捗ログの初期化</text>
+        <rect x="46" y="200" width="204" height="40" rx="8" fill="#fff" stroke="#E7C3B2"/>
+        <text x="58" y="219" font-size="12.5" font-weight="700" fill="#1C1B18">init.sh</text>
+        <text x="58" y="234" font-size="10.5" fill="#6E6960">開発サーバ起動スクリプト</text>
+        <rect x="46" y="248" width="204" height="40" rx="8" fill="#fff" stroke="#E7C3B2"/>
+        <text x="58" y="267" font-size="12.5" font-weight="700" fill="#1C1B18">初回 git commit</text>
+        <text x="58" y="282" font-size="10.5" fill="#6E6960">追加ファイルを記録</text>
+
+        <!-- coding agent loop -->
+        <rect x="330" y="40" width="500" height="280" rx="13" fill="#E0EEE3" stroke="#BFDDC7"/>
+        <text x="580" y="68" text-anchor="middle" font-size="15" font-weight="800" fill="#234b30">実装エージェント（毎セッション繰り返し）</text>
+
+        <rect x="356" y="86" width="200" height="46" rx="8" fill="#fff" stroke="#BFDDC7"/>
+        <text x="456" y="106" text-anchor="middle" font-size="12.5" font-weight="700" fill="#234b30">① 現在地を把握</text>
+        <text x="456" y="123" text-anchor="middle" font-size="10.5" fill="#33694a">pwd・進捗・git log・feature一覧</text>
+        <rect x="604" y="86" width="200" height="46" rx="8" fill="#fff" stroke="#BFDDC7"/>
+        <text x="704" y="106" text-anchor="middle" font-size="12.5" font-weight="700" fill="#234b30">② 1機能だけ選ぶ</text>
+        <text x="704" y="123" text-anchor="middle" font-size="10.5" fill="#33694a">最優先の未完了を1つ</text>
+        <rect x="604" y="156" width="200" height="46" rx="8" fill="#fff" stroke="#BFDDC7"/>
+        <text x="704" y="176" text-anchor="middle" font-size="12.5" font-weight="700" fill="#234b30">③ 実装する</text>
+        <text x="704" y="193" text-anchor="middle" font-size="10.5" fill="#33694a">漸進的に（欲張らない）</text>
+        <rect x="356" y="156" width="200" height="46" rx="8" fill="#fff" stroke="#BFDDC7"/>
+        <text x="456" y="176" text-anchor="middle" font-size="12.5" font-weight="700" fill="#234b30">④ E2Eで自己検証</text>
+        <text x="456" y="193" text-anchor="middle" font-size="10.5" fill="#33694a">ブラウザ操作で人間と同じ検証</text>
+        <rect x="356" y="226" width="200" height="46" rx="8" fill="#fff" stroke="#BFDDC7"/>
+        <text x="456" y="246" text-anchor="middle" font-size="12.5" font-weight="700" fill="#234b30">⑤ passes を更新</text>
+        <text x="456" y="263" text-anchor="middle" font-size="10.5" fill="#33694a">慎重なテスト後のみtrueに</text>
+        <rect x="604" y="226" width="200" height="46" rx="8" fill="#fff" stroke="#BFDDC7"/>
+        <text x="704" y="246" text-anchor="middle" font-size="12.5" font-weight="700" fill="#234b30">⑥ commit＋進捗記録</text>
+        <text x="704" y="263" text-anchor="middle" font-size="10.5" fill="#33694a">クリーンな状態で残す</text>
+
+        <text x="580" y="302" text-anchor="middle" font-size="11.5" fill="#33694a" font-weight="700">↻ 次セッションは①に戻る（feature が全て passes になるまで）</text>
+      </g>
+      <!-- handoff arrow -->
+      <path d="M270,180 L326,180" stroke="#C15F3C" stroke-width="2.6" marker-end="url(#ar4)"/>
+      <text x="298" y="172" text-anchor="middle" font-size="10" fill="#A84A2A">環境を渡す</text>
+      <!-- loop arrows -->
+      <path d="M556,109 L602,109" stroke="#3F7D54" stroke-width="2" marker-end="url(#ar4g)"/>
+      <path d="M704,132 L704,154" stroke="#3F7D54" stroke-width="2" marker-end="url(#ar4g)"/>
+      <path d="M604,179 L558,179" stroke="#3F7D54" stroke-width="2" marker-end="url(#ar4g)"/>
+      <path d="M456,202 L456,224" stroke="#3F7D54" stroke-width="2" marker-end="url(#ar4g)"/>
+      <path d="M556,249 L602,249" stroke="#3F7D54" stroke-width="2" marker-end="url(#ar4g)"/>
+    </svg>
+    <figcaption><b>図7</b>：「全機能リスト＋1機能ずつ＋毎回クリーンな状態で終える」が、ワンショット暴走と早すぎる完成宣言の両方を抑える。</figcaption>
+  </figure>
+
+  <h3>失敗モードと対策（公式まとめ）</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>問題</th><th>初期化エージェントの対策</th><th>実装エージェントの対策</th></tr></thead>
+      <tbody>
+        <tr><td>プロジェクト全体を早く完成宣言してしまう</td><td>仕様からE2E機能リスト(JSON)を作る</td><td>冒頭でリストを読み、着手する1機能を選ぶ</td></tr>
+        <tr><td>バグや未文書の状態で環境を放置する</td><td>初期gitリポジトリと進捗ノートを用意</td><td>冒頭で進捗とgit logを読み、サーバで基本テスト。終了時にcommitと進捗更新</td></tr>
+        <tr><td>機能を早まって「完了」にする</td><td>機能リストを用意</td><td>全機能を自己検証。慎重なテスト後のみ「passing」に</td></tr>
+        <tr><td>アプリの起動方法を毎回探る</td><td><code>init.sh</code> を書く</td><td>冒頭で <code>init.sh</code> を読む</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout c-info">
+    <div class="ttl">▶ 実装の工夫メモ</div>
+    機能リストは<strong>Markdownより JSON が良い</strong>とされます（モデルがJSONを勝手に書き換えにくいため）。テストは <code>curl</code> やユニットテストだけでなく、<strong>ブラウザ自動化で人間と同じE2E検証</strong>をさせると劇的に精度が上がる、と報告されています。
+  </div>
+</section>
+
+<!-- ===================== 9. MULTI-AGENT ===================== -->
+<section id="multiagent">
+  <div class="sec-head"><span class="sec-num">09</span><h2>マルチエージェント・動的ワークフロー</h2></div>
+  <p class="sec-sub">1つの問題を多数のサブエージェントに分割し並列処理。2026年5月の「動的ワークフロー」で実用段階に。</p>
+
+  <p>02章のサブエージェントを推し進めると、<strong>1つのリードエージェントが高レベルな計画を持ち、複数のサブエージェントが並列に深掘りして要約を返す</strong>マルチエージェント構成になります。さらに2026年5月、Claude Code は<strong>動的ワークフロー（Dynamic Workflows）</strong>を発表しました。Claude が<strong>オーケストレーションのスクリプトを自分で書き</strong>、数十〜数百の並列サブエージェントを1セッション内で走らせ、結果を統合前に検証します。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 350" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="動的ワークフローのファンアウト構造">
+      <defs>
+        <marker id="ar5" markerWidth="9" markerHeight="9" refX="4.5" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#6A5099"/></marker>
+        <marker id="ar5o" markerWidth="9" markerHeight="9" refX="4.5" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#C15F3C"/></marker>
+      </defs>
+      <g font-family="Hiragino Sans,system-ui,sans-serif">
+        <!-- prompt -->
+        <rect x="350" y="22" width="160" height="44" rx="10" fill="#211F1B"/>
+        <text x="430" y="42" text-anchor="middle" font-size="13" font-weight="800" fill="#E6BBA6">あなたの1つの指示</text>
+        <text x="430" y="58" text-anchor="middle" font-size="10.5" fill="#D9D2C7">例：サービス全体のバグ狩り</text>
+        <!-- orchestrator -->
+        <rect x="320" y="92" width="220" height="50" rx="10" fill="#E8E1F2" stroke="#cfc1ea"/>
+        <text x="430" y="113" text-anchor="middle" font-size="13.5" font-weight="800" fill="#4a3a72">オーケストレーター</text>
+        <text x="430" y="131" text-anchor="middle" font-size="10.5" fill="#5a4d7a">計画を動的に立て、スクリプト化（会話の外で進行）</text>
+
+        <!-- workers -->
+        <g>
+          <rect x="40" y="180" width="150" height="56" rx="9" fill="#fff" stroke="#cfc1ea"/>
+          <text x="115" y="202" text-anchor="middle" font-size="12" font-weight="700" fill="#4a3a72">サブエージェント</text>
+          <text x="115" y="220" text-anchor="middle" font-size="10.5" fill="#6E6960">独立した角度で探索</text>
+          <rect x="206" y="180" width="150" height="56" rx="9" fill="#fff" stroke="#cfc1ea"/>
+          <text x="281" y="202" text-anchor="middle" font-size="12" font-weight="700" fill="#4a3a72">サブエージェント</text>
+          <text x="281" y="220" text-anchor="middle" font-size="10.5" fill="#6E6960">並列に作業</text>
+          <rect x="372" y="180" width="150" height="56" rx="9" fill="#fff" stroke="#cfc1ea"/>
+          <text x="447" y="202" text-anchor="middle" font-size="12" font-weight="700" fill="#4a3a72">サブエージェント</text>
+          <text x="447" y="220" text-anchor="middle" font-size="10.5" fill="#6E6960">各々クリーンな窓</text>
+          <rect x="538" y="180" width="130" height="56" rx="9" fill="#fff" stroke="#cfc1ea"/>
+          <text x="603" y="208" text-anchor="middle" font-size="12" font-weight="700" fill="#4a3a72">… 最大数百</text>
+          <!-- verifier -->
+          <rect x="684" y="180" width="146" height="56" rx="9" fill="#F2DBCF" stroke="#E7C3B2"/>
+          <text x="757" y="202" text-anchor="middle" font-size="12" font-weight="700" fill="#A84A2A">検証 / 敵対役</text>
+          <text x="757" y="220" text-anchor="middle" font-size="10.5" fill="#8a4427">結果を反証しに行く</text>
+        </g>
+
+        <!-- converge -->
+        <rect x="300" y="280" width="260" height="48" rx="10" fill="#E0EEE3" stroke="#BFDDC7"/>
+        <text x="430" y="300" text-anchor="middle" font-size="13" font-weight="800" fill="#234b30">収束した1つの答え</text>
+        <text x="430" y="317" text-anchor="middle" font-size="10.5" fill="#33694a">検証済みの統合結果だけが手元に届く</text>
+      </g>
+      <!-- arrows -->
+      <path d="M430,66 L430,90" stroke="#6A5099" stroke-width="2" marker-end="url(#ar5)"/>
+      <path d="M360,142 L120,178" stroke="#6A5099" stroke-width="1.6" marker-end="url(#ar5)"/>
+      <path d="M395,142 L285,178" stroke="#6A5099" stroke-width="1.6" marker-end="url(#ar5)"/>
+      <path d="M440,142 L450,176" stroke="#6A5099" stroke-width="1.6" marker-end="url(#ar5)"/>
+      <path d="M480,142 L600,178" stroke="#6A5099" stroke-width="1.6" marker-end="url(#ar5)"/>
+      <path d="M505,142 L745,178" stroke="#C15F3C" stroke-width="1.6" marker-end="url(#ar5o)"/>
+      <!-- converge arrows -->
+      <path d="M120,238 L360,278" stroke="#3F7D54" stroke-width="1.6" marker-end="url(#ar5)"/>
+      <path d="M447,238 L440,278" stroke="#3F7D54" stroke-width="1.6" marker-end="url(#ar5)"/>
+      <path d="M745,238 L500,278" stroke="#3F7D54" stroke-width="1.6" marker-end="url(#ar5)"/>
+    </svg>
+    <figcaption><b>図8</b>：「独立に攻め → 互いに反証 → 収束するまで反復」。単一パスでは到達できない結果に至るのが狙い。協調は会話の外（スクリプト）で進むため、規模が大きくても計画が崩れない。</figcaption>
+  </figure>
+
+  <h3>動的ワークフローの要点（2026年5月時点）</h3>
+  <ul class="clean">
+    <li><strong>規模</strong>：1回の実行で<strong>同時最大16・累計最大1,000</strong>のサブエージェント。数時間〜数日に及ぶ長時間・並列作業向け。</li>
+    <li><strong>中断耐性</strong>：進捗が逐次保存され、中断しても最初からではなく<strong>途中から再開</strong>する。</li>
+    <li><strong>起動方法</strong>：「ワークフローを作って」と頼むか、新設定 <code>ultracode</code>（努力度を最高に設定し、Claudeが自動でワークフロー化を判断）をオンにする。<strong>auto モード推奨</strong>。</li>
+    <li><strong>用途</strong>：コードベース全体のバグ狩り・最適化監査・セキュリティ監査、数千ファイルに及ぶ大規模移行、二重チェックが必要な重要作業。</li>
+    <li><strong>コスト注意</strong>：通常セッションより<strong>大幅にトークンを消費</strong>。まずは小さくスコープしたタスクで感触を掴むのが推奨。Max / Team / Enterprise（管理者有効化）のリサーチプレビュー。</li>
+  </ul>
+
+  <div class="callout c-key">
+    <div class="ttl">◆ 実例：Bun の Zig → Rust 移植</div>
+    動的ワークフローで、Bun を Zig から Rust へ移植。既存テストの<strong>99.8%が通過</strong>、約<strong>75万行のRust</strong>、初コミットからマージまで<strong>11日</strong>。あるワークフローがZig側の全構造体フィールドに正しいRustのライフタイムを対応づけ、次のワークフローが各 .zig を挙動同一の .rs へ移植（各ファイルに2名のレビュー役つきで数百エージェントが並列）。「四半期で計画する規模の作業が数日で終わる」段階に入っています。
+  </div>
+
+  <h3>基礎となる5つのワークフローパターン（Building Effective Agents）</h3>
+  <p>これらの上位構成は、Anthropic が2024年末に整理した<strong>5つの基本パターン</strong>の組み合わせとして理解できます。設計の3原則は<strong>「単純さを保つ・計画ステップを明示して透明性を高める・ツール定義(ACI)を入念に作る」</strong>。</p>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>パターン</th><th>仕組み</th></tr></thead>
+      <tbody>
+        <tr><td class="method">プロンプト連鎖</td><td>各LLM呼び出しが前の出力を処理する直列分解。</td></tr>
+        <tr><td class="method">ルーティング</td><td>入力を分類し、専門化された後続タスクへ振り分ける。関心の分離。</td></tr>
+        <tr><td class="method">並列化</td><td>複数LLMで同時処理し結果を集約。</td></tr>
+        <tr><td class="method">オーケストレーター–ワーカー</td><td>中央LLMが動的にタスク分解し、ワーカーへ委譲、結果を統合。動的ワークフローの原型。</td></tr>
+        <tr><td class="method">評価者–最適化者</td><td>一方が生成、もう一方が評価とフィードバックをループで返す。検証・敵対役の原型。</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ===================== 10. CROSS-CUTTING ===================== -->
+<section id="crosscut">
+  <div class="sec-head"><span class="sec-num">10</span><h2>横断ベストプラクティス</h2></div>
+  <p class="sec-sub">どの手法を使うときも効く、Claude Code公式の実践集。手法を「動かす」ための潤滑油。</p>
+
+  <h3>① 検証で締める ― 最重要</h3>
+  <p>エージェントは「<strong>出来たように見えたら</strong>」止まります。検証手段がないと、あなた自身が検証ループになり、すべてのミスがあなたの気づき待ちになります。<strong>合否を返す仕組み</strong>（テスト、ビルドの終了コード、リンタ、フィクスチャとの差分、デザインとのスクリーンショット比較）を与えれば、ループは自律的に閉じます。締め方には段階があります。</p>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>締め方</th><th>仕組み</th><th>強さ</th></tr></thead>
+      <tbody>
+        <tr><td class="method">1プロンプト内</td><td>「実装後にテストを走らせて直すまで反復して」と同じ指示に含める</td><td><span class="pill p-low">手軽</span></td></tr>
+        <tr><td class="method">/goal 条件</td><td>別の評価器が毎ターン再チェックし、満たすまで継続</td><td><span class="pill p-mid">セッション越し</span></td></tr>
+        <tr><td class="method">Stop フック</td><td>スクリプトで決定的にゲート。通るまでターンを終わらせない</td><td><span class="pill p-high">確実</span></td></tr>
+        <tr><td class="method">検証サブエージェント</td><td>新鮮なモデルが結果を反証しに行く（作業者≠採点者）</td><td><span class="pill p-high">独立</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>そして<strong>主張ではなく証拠を出させる</strong>こと（テスト出力・実行コマンドと結果・スクリーンショット）。証拠の確認は自分で検証し直すより速く、見ていなかったセッションにも有効です。<strong>「検証できないなら出荷しない」</strong>。</p>
+
+  <h3>② 具体的なコンテキストを与える</h3>
+  <p>「ログインのバグを直して」ではなく<strong>「セッションタイムアウト後にログイン失敗。<code>src/auth/</code> のトークン更新を確認し、再現する失敗テストを書いてから直して」</strong>。対象ファイル・状況・「直った」の定義を示すほど、修正の往復が減ります。<code>@</code> でファイル参照、画像の貼り付け、<code>cat error.log | claude</code> でのパイプ入力も活用します。</p>
+
+  <h3>③ 早めの・頻繁な軌道修正</h3>
+  <ul class="clean">
+    <li><code>Esc</code> で途中停止（コンテキストは保持され、方向転換できる）。<code>Esc Esc</code> / <code>/rewind</code> で会話・コードを巻き戻し。</li>
+    <li><strong>同じ問題で2回以上修正したら</strong>、コンテキストは失敗アプローチで汚れている。<code>/clear</code> して、学んだことを盛り込んだ<strong>より良い初期プロンプト</strong>で再開する方がほぼ常に勝る。</li>
+  </ul>
+
+  <h3>④ コンテキストを積極管理する</h3>
+  <ul class="clean">
+    <li><strong>無関係なタスクの間で <code>/clear</code></strong>。長いセッションに無関係な履歴が溜まると性能が落ちる。</li>
+    <li><code>/compact &lt;指示&gt;</code> で要約の焦点を制御。チェックポイントで任意地点に復元。</li>
+    <li><strong>調査はサブエージェントに委譲</strong>（「サブエージェントでXを調査して」）。大量のファイル読みを別の窓に隔離し、本筋の窓をきれいに保つ。</li>
+  </ul>
+
+  <h3>⑤ 敵対的レビューを一段挟む</h3>
+  <p>無人で長く動かすほど、完了とみなす前の<strong>独立チェック</strong>が効きます。新鮮なサブエージェントは差分と基準だけを見て、生成過程の理屈に引きずられずに評価します。バンドルの <code>/code-review</code> スキルや、計画(<code>PLAN.md</code>)との突き合わせレビューが使えます。ただし<strong>「レビュー役は何かしら指摘するもの」</strong>。正しさや要件に関わるギャップだけを挙げさせ、過剰設計を避けます。Writer/Reviewer を別セッションに分ける、テスト作成役と実装役を分ける、なども有効です。</p>
+
+  <div class="callout c-warn">
+    <div class="ttl">⚠ よくある失敗パターン（公式）</div>
+    <strong>ごちゃ混ぜセッション</strong>（無関係な話題で窓を汚す→ <code>/clear</code>）、<strong>修正の無限ループ</strong>（2回失敗で <code>/clear</code> ＋良いプロンプト）、<strong>肥大化CLAUDE.md</strong>（容赦なく刈る）、<strong>信頼するが検証しないギャップ</strong>（必ず検証を付ける）、<strong>無限探索</strong>（スコープを絞るかサブエージェントへ）。
+  </div>
+</section>
+
+<!-- ===================== 11. CHOOSE ===================== -->
+<section id="choose">
+  <div class="sec-head"><span class="sec-num">11</span><h2>手法の使い分け</h2></div>
+  <p class="sec-sub">「規模・不確実性・期間・並列性」の4軸で選ぶ。多くの場合は複数を連結する。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="手法選択の意思決定フロー">
+      <defs>
+        <marker id="ar6" markerWidth="9" markerHeight="9" refX="4.5" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#6E6960"/></marker>
+      </defs>
+      <g font-family="Hiragino Sans,system-ui,sans-serif" font-size="12.5">
+        <!-- start -->
+        <rect x="20" y="105" width="150" height="44" rx="22" fill="#211F1B"/>
+        <text x="95" y="131" text-anchor="middle" font-size="13" font-weight="800" fill="#E6BBA6">タスクが来た</text>
+        <!-- q1 -->
+        <polygon points="250,127 320,95 390,127 320,159" fill="#FBF8F3" stroke="#D6CCBD"/>
+        <text x="320" y="124" text-anchor="middle" font-size="11.5" fill="#1C1B18">差分を1文で</text>
+        <text x="320" y="139" text-anchor="middle" font-size="11.5" fill="#1C1B18">説明できる?</text>
+        <!-- small -->
+        <rect x="250" y="14" width="150" height="40" rx="9" fill="#E0EEE3" stroke="#BFDDC7"/>
+        <text x="325" y="32" text-anchor="middle" font-weight="700" fill="#234b30">直接実装</text>
+        <text x="325" y="47" text-anchor="middle" font-size="10.5" fill="#33694a">計画は省略</text>
+        <!-- q2 -->
+        <polygon points="470,127 545,93 620,127 545,161" fill="#FBF8F3" stroke="#D6CCBD"/>
+        <text x="545" y="120" text-anchor="middle" font-size="11.5" fill="#1C1B18">1セッションで</text>
+        <text x="545" y="135" text-anchor="middle" font-size="11.5" fill="#1C1B18">終わる規模?</text>
+        <!-- mid -->
+        <rect x="470" y="190" width="150" height="46" rx="9" fill="#DEEAF1" stroke="#C5DAE7"/>
+        <text x="545" y="210" text-anchor="middle" font-weight="700" fill="#274558">プランモード+仕様</text>
+        <text x="545" y="226" text-anchor="middle" font-size="10.5" fill="#3A6B8C">04・05・06章</text>
+        <!-- large -->
+        <rect x="690" y="60" width="155" height="56" rx="9" fill="#F2DBCF" stroke="#E7C3B2"/>
+        <text x="767" y="82" text-anchor="middle" font-weight="700" fill="#A84A2A">引き継ぎ＋長時間</text>
+        <text x="767" y="99" text-anchor="middle" font-size="10.5" fill="#8a4427">07・08章</text>
+        <rect x="690" y="140" width="155" height="56" rx="9" fill="#E8E1F2" stroke="#cfc1ea"/>
+        <text x="767" y="162" text-anchor="middle" font-weight="700" fill="#4a3a72">並列・動的WF</text>
+        <text x="767" y="179" text-anchor="middle" font-size="10.5" fill="#5a4d7a">09章（数百ファイル等）</text>
+      </g>
+      <path d="M170,127 L248,127" stroke="#6E6960" stroke-width="1.8" marker-end="url(#ar6)"/>
+      <path d="M320,95 L320,56" stroke="#6E6960" stroke-width="1.8" marker-end="url(#ar6)"/>
+      <text x="332" y="78" font-size="10.5" fill="#3F7D54" font-weight="700">Yes</text>
+      <path d="M390,127 L468,127" stroke="#6E6960" stroke-width="1.8" marker-end="url(#ar6)"/>
+      <text x="420" y="118" font-size="10.5" fill="#A84A2A" font-weight="700">No</text>
+      <path d="M545,161 L545,188" stroke="#6E6960" stroke-width="1.8" marker-end="url(#ar6)"/>
+      <text x="556" y="180" font-size="10.5" fill="#3A6B8C" font-weight="700">Yes</text>
+      <path d="M620,120 L688,95" stroke="#6E6960" stroke-width="1.8" marker-end="url(#ar6)"/>
+      <path d="M620,134 L688,160" stroke="#6E6960" stroke-width="1.8" marker-end="url(#ar6)"/>
+      <text x="650" y="118" font-size="10.5" fill="#A84A2A" font-weight="700">No（大規模）</text>
+    </svg>
+    <figcaption><b>図9</b>：大まかな分岐。実際には「小さく試す→効果を見て手法を足す」のが鉄則。最初から重い手法に行かない。</figcaption>
+  </figure>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>タスクの性質</th><th>推奨アプローチ（連結）</th><th>コンテキスト負荷</th></tr></thead>
+      <tbody>
+        <tr><td>タイポ・ログ追加・リネーム</td><td>直接指示（計画なし）＋検証</td><td><span class="pill p-low">低</span></td></tr>
+        <tr><td>複数ファイルに及ぶ新機能</td><td>プランモードで探索→計画（04）→ SPEC.md（05）→ 新セッションで実装→ 敵対的レビュー（10）</td><td><span class="pill p-mid">中</span></td></tr>
+        <tr><td>不慣れなコードの改修</td><td>「コードベースに質問」→ プランモード→ 具体的プロンプト（06・10）</td><td><span class="pill p-mid">中</span></td></tr>
+        <tr><td>数時間〜数日のアプリ構築</td><td>初期化役＋実装役のハーネス（08）＋進捗/ADR引き継ぎ（07）＋E2E自己検証</td><td><span class="pill p-high">高</span></td></tr>
+        <tr><td>数千ファイルの移行・全体監査</td><td>動的ワークフロー（09）＋ <code>ultracode</code> ＋ auto モード＋独立検証</td><td><span class="pill p-high">高</span></td></tr>
+        <tr><td>探索的（正解が不明）</td><td>あえて曖昧なプロンプトで反応を見る→ 軌道修正（10）</td><td><span class="pill p-low">低</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout c-good">
+    <div class="ttl">✔ 通底する4原則（これだけ覚えれば良い）</div>
+    <strong>①コンテキストは有限資源</strong>＝高シグナルの最小集合を保つ。<strong>②探索と実装を分ける</strong>＝間違った問題を解かない。<strong>③記憶は外部に書く</strong>＝窓を越えて継承する。<strong>④必ず検証で締める</strong>＝証拠を出させる。各手法はこの4つの具体化に過ぎません。
+  </div>
+
+  <p class="src">なお、本資料はモデルの「開発手法」に焦点を当てており、特定のモデルバージョンに依存しない原則を中心にまとめています。ツールの機能（動的ワークフロー等）やUIは更新が速いため、導入時は各公式ドキュメントの最新版をご確認ください。</p>
+</section>
+
+<!-- ===================== 12. REFS ===================== -->
+<section id="refs">
+  <div class="sec-head"><span class="sec-num">12</span><h2>出典・参考文献</h2></div>
+  <p class="sec-sub">一次情報（Anthropic公式）を主軸に、2026年の動向を補う二次情報を併記。</p>
+
+  <h3>Anthropic 公式（一次情報）</h3>
+  <ul class="clean">
+    <li><a href="https://code.claude.com/docs/en/best-practices">Best practices for Claude Code</a> — Claude Code公式ドキュメント。検証・探索/計画・CLAUDE.md・サブエージェント・並列セッション・auto モード・失敗パターン。</li>
+    <li><a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents">Effective context engineering for AI agents</a>（2025-09） — 注意の予算、コンテキストの腐敗、コンパクション/ノート/サブエージェント、ジャストインタイム検索。</li>
+    <li><a href="https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents">Effective harnesses for long-running agents</a>（2025-11） — 初期化役＋実装役、feature_list.json、claude-progress.txt、init.sh、失敗モード表。</li>
+    <li><a href="https://claude.com/blog/introducing-dynamic-workflows-in-claude-code">Introducing dynamic workflows in Claude Code</a>（2026-05） — 並列サブエージェント、ultracode、Bun移植の事例。</li>
+    <li><a href="https://code.claude.com/docs/en/workflows">Orchestrate subagents at scale with dynamic workflows</a> — 動的ワークフロー公式ドキュメント。</li>
+    <li><a href="https://www.anthropic.com/research/building-effective-agents">Building Effective AI Agents</a> — 5つのワークフローパターンと設計3原則。</li>
+  </ul>
+
+  <h3>方法論・動向（二次情報）</h3>
+  <ul class="clean">
+    <li><a href="https://thebcms.com/blog/spec-driven-development">Spec-Driven Development (SDD): The Definitive 2026 Guide</a> ／ <a href="https://www.marktechpost.com/2026/05/08/meet-github-spec-kit-an-open-source-toolkit-for-spec-driven-development-with-ai-coding-agents/">GitHub Spec-Kit（MarkTechPost）</a> — 仕様駆動の3レベルとツール状況。</li>
+    <li><a href="https://github.com/me2resh/agent-decision-record">Agent Decision Records (AgDR)</a> ／ <a href="https://ai.gopubby.com/agents-md-is-the-ew-architecture-decision-record-adr-3cfb6bdd6f2c">AGENTS.md vs ADR（AI Advances）</a> — 決定記録によるセッション引き継ぎ。</li>
+    <li><a href="https://codersera.com/blog/agents-md-complete-guide-2026/">AGENTS.md Complete Guide 2026</a> ／ <a href="https://arxiv.org/pdf/2602.11988">Evaluating AGENTS.md（arXiv）</a> — リポジトリ単位のコンテキストファイル標準。</li>
+    <li><a href="https://www.marktechpost.com/2026/05/28/anthropic-ships-claude-opus-4-8-alongside-dynamic-workflows-and-cheaper-fast-mode-with-workflows-capped-at-1000-subagents/">動的ワークフローの規模（MarkTechPost）</a> ／ <a href="https://www.infoq.com/news/2026/06/dynamic-workflows-claude-code/">InfoQ解説</a> — 同時16・累計1,000の上限。</li>
+    <li><a href="https://developers.redhat.com/articles/2026/02/23/prompt-engineering-big-vs-small-prompts-ai-agents">Big vs. small prompts for AI agents（Red Hat）</a> — 最小コンテキストの実証的議論。</li>
+  </ul>
+
+  <div class="callout c-info">
+    <div class="ttl">▶ 一次情報の確認を推奨</div>
+    本資料の事実は上記の公開情報に基づきます。特に Claude Code の機能やプラン要件は更新が速いため、実運用前に各リンク先の最新版をご確認ください。
+  </div>
+</section>
+
+<p style="text-align:center; color:var(--faint); font-size:13px; margin:40px 0 10px">― 以上 ―</p>
+
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <h4>このドキュメントについて</h4>
+    <p style="color:#C9C2B6">2026年6月時点の公開情報（特にAnthropicのエンジニアリングブログおよびClaude Code公式ドキュメント）に基づき作成。AI分野は変化が速いため、重要な意思決定の前には一次情報の最新版をご確認ください。</p>
+  </div>
+</footer>
+
+</body>
+</html>

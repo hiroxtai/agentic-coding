@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GitHub Copilot のセッション間引き継ぎ 詳解（2026年6月）</title>
+<style>
+  :root{
+    --bg:#F4EFE7; --surface:#FFFFFF; --surface-2:#FBF8F3;
+    --ink:#1C1B18; --muted:#6E6960; --faint:#9B958B;
+    --accent:#C15F3C; --accent-deep:#A84A2A; --accent-soft:#F2DBCF;
+    --line:#E5DDD1; --line-strong:#D6CCBD;
+    --good:#3F7D54; --good-soft:#E0EEE3;
+    --warn:#B8860B; --warn-soft:#F6ECCF;
+    --info:#3A6B8C; --info-soft:#DEEAF1;
+    --violet:#6A5099; --violet-soft:#E8E1F2;
+    --shadow:0 1px 2px rgba(40,30,20,.04),0 8px 24px rgba(40,30,20,.06);
+    --radius:16px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    line-height:1.85; font-size:16.5px; letter-spacing:.01em;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:980px; margin:0 auto; padding:0 22px}
+  h1,h2,h3,h4{line-height:1.4; letter-spacing:.005em}
+
+  .hero{
+    background:
+      radial-gradient(120% 140% at 88% -10%, rgba(106,80,153,.22), transparent 55%),
+      radial-gradient(110% 130% at -10% 0%, rgba(58,107,140,.16), transparent 50%),
+      linear-gradient(180deg,#1D2026 0%, #24262C 100%);
+    color:#F4EFE7; padding:60px 0 52px; position:relative; overflow:hidden;
+  }
+  .hero .wrap{position:relative; z-index:2}
+  .kicker{display:inline-block; font-size:12.5px; letter-spacing:.18em; text-transform:uppercase; color:#B7A6DA; border:1px solid rgba(183,166,218,.4); padding:5px 12px; border-radius:999px; margin-bottom:22px}
+  .hero h1{font-size:35px; margin:0 0 16px; font-weight:800; letter-spacing:0}
+  .hero h1 .em{color:#A78BD0}
+  .hero p.lead{font-size:17px; color:#D9D2C7; max-width:780px; margin:0 0 24px}
+  .hero .meta{display:flex; flex-wrap:wrap; gap:10px 22px; font-size:13.5px; color:#AEB2BF}
+  .hero .meta b{color:#B7A6DA; font-weight:600}
+  .hero-figs{display:flex; flex-wrap:wrap; gap:10px; margin-top:28px}
+  .chip{background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); padding:7px 14px; border-radius:999px; font-size:13px; color:#EFE8DC}
+  .chip b{color:#A78BD0; font-weight:700}
+
+  section{padding:44px 0 8px}
+  .sec-head{display:flex; align-items:baseline; gap:14px; margin-bottom:8px}
+  .sec-num{font-size:13px; font-weight:800; color:var(--accent); letter-spacing:.1em; border:1.5px solid var(--accent-soft); background:var(--surface); border-radius:8px; padding:3px 9px; white-space:nowrap}
+  h2{font-size:25px; margin:0; font-weight:800}
+  .sec-sub{color:var(--muted); font-size:15.5px; margin:6px 0 22px}
+  h3{font-size:18.5px; margin:28px 0 10px; font-weight:700}
+  p{margin:0 0 16px}
+  a{color:var(--accent-deep); text-decoration:none; border-bottom:1px solid var(--accent-soft)}
+  a:hover{border-bottom-color:var(--accent)}
+  strong{font-weight:700}
+  .em-ink{color:var(--accent-deep); font-weight:700}
+
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:22px 26px; box-shadow:var(--shadow); margin:20px 0}
+  .callout{border-radius:14px; padding:16px 20px; margin:20px 0; font-size:15.5px; border:1px solid}
+  .callout .ttl{font-weight:800; font-size:14px; letter-spacing:.04em; margin-bottom:6px; display:flex; align-items:center; gap:8px}
+  .c-key{background:var(--accent-soft); border-color:#E7C3B2; color:#5e2a17}
+  .c-key .ttl{color:var(--accent-deep)}
+  .c-info{background:var(--info-soft); border-color:#C5DAE7; color:#274558}
+  .c-info .ttl{color:var(--info)}
+  .c-good{background:var(--good-soft); border-color:#BFDDC7; color:#234b30}
+  .c-good .ttl{color:var(--good)}
+  .c-warn{background:var(--warn-soft); border-color:#E8D49A; color:#5c4708}
+  .c-warn .ttl{color:#8a6608}
+  .c-violet{background:var(--violet-soft); border-color:#cfc1ea; color:#3f3266}
+  .c-violet .ttl{color:var(--violet)}
+
+  .toc{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:22px 26px; box-shadow:var(--shadow); margin:30px 0 6px}
+  .toc h4{margin:0 0 14px; font-size:13px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted)}
+  .toc ol{margin:0; padding:0; list-style:none; counter-reset:t; display:grid; grid-template-columns:1fr 1fr; gap:6px 28px}
+  .toc li{counter-increment:t; font-size:15px; padding:5px 0; border-bottom:1px dashed var(--line)}
+  .toc li a{border:0; color:var(--ink); display:flex; gap:10px; align-items:baseline}
+  .toc li a:hover{color:var(--accent-deep)}
+  .toc li a::before{content:counter(t,decimal-leading-zero); color:var(--accent); font-weight:800; font-size:12.5px; min-width:22px}
+
+  .tbl-wrap{overflow-x:auto; margin:20px 0; border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow)}
+  table{border-collapse:collapse; width:100%; font-size:14.5px; background:var(--surface)}
+  th,td{text-align:left; padding:12px 16px; border-bottom:1px solid var(--line); vertical-align:top}
+  thead th{background:var(--surface-2); font-weight:700; color:var(--ink); font-size:13.5px; border-bottom:2px solid var(--line-strong)}
+  tbody tr:last-child td{border-bottom:0}
+  tbody tr:hover{background:var(--surface-2)}
+  td.method{font-weight:700; color:var(--accent-deep); white-space:nowrap}
+  .pill{display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px; letter-spacing:.03em}
+  .p-low{background:var(--good-soft); color:var(--good)}
+  .p-mid{background:var(--warn-soft); color:#8a6608}
+  .p-high{background:#F4D9CF; color:var(--accent-deep)}
+  code{background:var(--surface-2); border:1px solid var(--line); border-radius:6px; padding:1.5px 6px; font-family:"SF Mono",Menlo,Consolas,monospace; font-size:13px; color:var(--accent-deep)}
+  pre{background:#211F1B; color:#EFE8DC; border-radius:12px; padding:16px 18px; overflow-x:auto; font-family:"SF Mono",Menlo,Consolas,monospace; font-size:13px; line-height:1.7; margin:16px 0}
+  pre code{background:none; border:0; color:#EFE8DC; padding:0}
+  pre .c{color:#9B958B}
+  pre .k{color:#A78BD0}
+
+  figure{margin:24px 0; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:22px 20px 14px; box-shadow:var(--shadow)}
+  figure svg{display:block; width:100%; height:auto}
+  figcaption{font-size:13px; color:var(--muted); text-align:center; margin-top:12px; padding-top:10px; border-top:1px dashed var(--line)}
+  figcaption b{color:var(--accent-deep)}
+
+  ul.clean{margin:6px 0 18px; padding:0; list-style:none}
+  ul.clean li{position:relative; padding:4px 0 4px 26px; font-size:15.5px}
+  ul.clean li::before{content:""; position:absolute; left:6px; top:14px; width:7px; height:7px; border-radius:2px; background:var(--accent); transform:rotate(45deg)}
+
+  .src{font-size:13px; color:var(--muted)}
+  footer{margin-top:48px; background:#1D2026; color:#C9C2B6; padding:38px 0}
+  footer .wrap{font-size:14px}
+  footer h4{color:#B7A6DA; margin:0 0 10px; font-size:13px; letter-spacing:.1em; text-transform:uppercase}
+  footer a{color:#B7A6DA; border-bottom:1px solid rgba(183,166,218,.3)}
+
+  @media(max-width:680px){
+    .hero h1{font-size:27px}
+    h2{font-size:21px}
+    .toc ol{grid-template-columns:1fr}
+    .wrap{padding:0 16px}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="kicker">GitHub Copilot · Session Handoff · Deep Dive</span>
+    <h1>GitHub <span class="em">Copilot</span> の<br>セッション間引き継ぎ 詳解</h1>
+    <p class="lead">Copilot のエージェント機能に最適な「記憶」と「引き継ぎ」の仕組みを、2026年の一次情報（GitHub 公式 Docs・エンジニアリングブログ）をもとに図解で整理します。本命はネイティブの Copilot Memory。それを git 管理のカスタム指示と MCP で補強する段階構成が要点です。</p>
+    <div class="meta">
+      <span><b>対象</b> GitHub Copilot（agent mode / coding agent / CLI）</span>
+      <span><b>時点</b> 2026年6月</span>
+      <span><b>主軸</b> Copilot Memory ＋ カスタム指示 ＋ MCP</span>
+    </div>
+    <div class="hero-figs">
+      <span class="chip"><b>3</b> つのエージェント面</span>
+      <span class="chip">ネイティブ <b>Copilot Memory</b></span>
+      <span class="chip"><b>段階導入</b> アーキテクチャ</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <nav class="toc" aria-label="目次">
+    <h4>目次</h4>
+    <ol>
+      <li><a href="#summary">結論と全体像</a></li>
+      <li><a href="#surfaces">3つのエージェント面</a></li>
+      <li><a href="#memory">Copilot Memory（ネイティブ自動記憶）</a></li>
+      <li><a href="#how">Memoryの仕組み：citation検証</a></li>
+      <li><a href="#cross">エージェント横断の記憶共有</a></li>
+      <li><a href="#instructions">カスタム指示（手動・git管理層）</a></li>
+      <li><a href="#membank">Memory Bank を Copilot で</a></li>
+      <li><a href="#mcp">MCPで外部メモリ接続</a></li>
+      <li><a href="#arch">推奨アーキテクチャ（段階導入）</a></li>
+      <li><a href="#notes">注意点・使い分け</a></li>
+      <li><a href="#refs">出典</a></li>
+    </ol>
+  </nav>
+
+<!-- ===================== 1. SUMMARY ===================== -->
+<section id="summary">
+  <div class="sec-head"><span class="sec-num">01</span><h2>結論と全体像</h2></div>
+  <p class="sec-sub">Copilot は2026年、ネイティブの自動記憶を獲得した。これを土台に、git管理の指示とMCPで補強するのが最適。</p>
+
+  <p>GitHub Copilot のセッション間引き継ぎは、2026年に大きく変わりました。<strong>ネイティブの「Copilot Memory」</strong>が、明示指示なしでリポジトリの知識を学習・保存し、次セッションへ自動で引き継ぐようになったためです。これが本命の土台で、その上に<strong>git管理のカスタム指示（恒久・確定的）</strong>を置き、必要なら<strong>MCPで外部メモリ</strong>を足す、という3層構成が2026年6月時点の最適解です。</p>
+
+  <div class="callout c-key">
+    <div class="ttl">◆ 3行サマリー</div>
+    <strong>①Copilot Memory を有効化</strong>（自動・リポジトリ単位・エージェント横断の記憶）。<strong>②`copilot-instructions.md` と `AGENTS.md` を整備</strong>（毎回必ず効く確定層）。<strong>③Memory Bank式の確定ファイルと MCP メモリ</strong>を必要に応じて上乗せ。
+  </div>
+
+  <div class="callout c-violet">
+    <div class="ttl">◆ 前回までの資料との関係</div>
+    汎用論（07章・引き継ぎ資料）の<strong>Copilot 特化版</strong>です。前回の「規約層／基盤層／組込み層」でいうと、Copilot Memory は<strong>組込み層がネイティブに強化された</strong>もの、カスタム指示は<strong>規約層</strong>、MCPメモリは<strong>基盤層</strong>に対応します。
+  </div>
+</section>
+
+<!-- ===================== 2. SURFACES ===================== -->
+<section id="surfaces">
+  <div class="sec-head"><span class="sec-num">02</span><h2>3つのエージェント面</h2></div>
+  <p class="sec-sub">Copilotの「エージェント」は3つあり、引き継ぎの効き方が少し違う。まずここを区別する。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Copilotの3つのエージェント面">
+      <g font-family="Hiragino Sans,system-ui,sans-serif">
+        <!-- agent mode -->
+        <rect x="20" y="28" width="262" height="200" rx="13" fill="#DEEAF1" stroke="#C5DAE7"/>
+        <text x="151" y="58" text-anchor="middle" font-size="15" font-weight="800" fill="#23415a">Agent mode</text>
+        <text x="151" y="78" text-anchor="middle" font-size="11.5" fill="#33597a">VS Code 内・対話的</text>
+        <line x1="44" y1="92" x2="258" y2="92" stroke="#C5DAE7"/>
+        <text x="40" y="116" font-size="11.5" fill="#274558">エディタで会話しながら</text>
+        <text x="40" y="134" font-size="11.5" fill="#274558">複数ファイルを編集・実行</text>
+        <text x="40" y="166" font-size="11.5" font-weight="700" fill="#23415a">引き継ぎ手段：</text>
+        <text x="40" y="186" font-size="11" fill="#33597a">Memory ／ カスタム指示 ／</text>
+        <text x="40" y="203" font-size="11" fill="#33597a">prompt files ／ <tspan font-weight="700">MCPフル対応</tspan></text>
+        <text x="40" y="220" font-size="10.5" fill="#3F7D54" font-weight="700">→ 最も自由度が高い</text>
+
+        <!-- coding agent -->
+        <rect x="299" y="20" width="262" height="208" rx="13" fill="#F2DBCF" stroke="#C15F3C" stroke-width="2"/>
+        <text x="430" y="44" text-anchor="middle" font-size="10.5" font-weight="800" fill="#A84A2A">★ Memoryの主役</text>
+        <text x="430" y="68" text-anchor="middle" font-size="15" font-weight="800" fill="#A84A2A">Coding agent</text>
+        <text x="430" y="88" text-anchor="middle" font-size="11.5" fill="#8a4427">クラウド・自律（Issue→PR）</text>
+        <line x1="323" y1="100" x2="537" y2="100" stroke="#E7C3B2"/>
+        <text x="319" y="124" font-size="11.5" fill="#5e2a17">Issueを割り当てると、使い捨て</text>
+        <text x="319" y="142" font-size="11.5" fill="#5e2a17">環境で自律実行しPRを作成</text>
+        <text x="319" y="174" font-size="11.5" font-weight="700" fill="#A84A2A">引き継ぎ手段：</text>
+        <text x="319" y="194" font-size="11" fill="#8a4427">Memory ／ AGENTS.md ／</text>
+        <text x="319" y="211" font-size="11" fill="#8a4427">MCP（toolsのみ・制約あり）</text>
+
+        <!-- CLI -->
+        <rect x="578" y="28" width="262" height="200" rx="13" fill="#E0EEE3" stroke="#BFDDC7"/>
+        <text x="709" y="58" text-anchor="middle" font-size="15" font-weight="800" fill="#234b30">Copilot CLI</text>
+        <text x="709" y="78" text-anchor="middle" font-size="11.5" fill="#33694a">ターミナル</text>
+        <line x1="602" y1="92" x2="816" y2="92" stroke="#BFDDC7"/>
+        <text x="598" y="116" font-size="11.5" fill="#234b30">シェルから対話・自動化。</text>
+        <text x="598" y="134" font-size="11.5" fill="#234b30">デバッグや調査に強い</text>
+        <text x="598" y="166" font-size="11.5" font-weight="700" fill="#234b30">引き継ぎ手段：</text>
+        <text x="598" y="186" font-size="11" fill="#33694a">Memory ／ カスタム指示</text>
+        <text x="598" y="203" font-size="11" fill="#33694a">（add custom instructions）</text>
+      </g>
+    </svg>
+    <figcaption><b>図1</b>：<b>Copilot Memory は3面すべてに効き、学びを共有</b>する。coding agent はタスクごとに使い捨て環境のため、恒久情報は必ずリポジトリ側（指示ファイル）に置く。</figcaption>
+  </figure>
+</section>
+
+<!-- ===================== 3. MEMORY ===================== -->
+<section id="memory">
+  <div class="sec-head"><span class="sec-num">03</span><h2>Copilot Memory（ネイティブ自動記憶）</h2></div>
+  <p class="sec-sub">明示指示なしで、リポジトリの知識を学習・保存し、次セッションへ自動で引き継ぐ。Copilot 引き継ぎの本命。</p>
+
+  <p><strong>Copilot Memory</strong> は、エージェントが作業しながら<strong>リポジトリの事実（コーディング規約・アーキテクチャ・ファイル横断の依存関係）を自動的に学習・保存</strong>し、次のセッション開始時にそれをプロンプトへ自動注入する仕組みです。ユーザーが明示的に指示しなくても、<strong>使うほど賢くなる累積的な知識ベース</strong>が育ちます。</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>項目</th><th>内容</th></tr></thead>
+      <tbody>
+        <tr><td class="method">スコープ</td><td><strong>リポジトリ単位</strong>に厳密限定。書き込み権限者の操作でのみ作成、読み取り権限者のタスクでのみ使用。ソースコードと同じく<strong>そのリポジトリ内に留まる</strong>。</td></tr>
+        <tr><td class="method">有効期限</td><td>約 <strong>28日で失効</strong>（使用・再確認されるとタイムスタンプが更新され延命）。</td></tr>
+        <tr><td class="method">対応面</td><td>coding agent・Copilot CLI・code review で先行提供。<strong>面をまたいで学びを共有</strong>。</td></tr>
+        <tr><td class="method">状態</td><td>公開プレビュー・<strong>オプトイン</strong>・有料プラン。2026年3月4日から <strong>Pro/Pro+ は既定ON</strong>。</td></tr>
+        <tr><td class="method">有効化</td><td>GitHub の Copilot 設定でオン/オフ。どこで学習させるかを自分で選べる。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout c-good">
+    <div class="ttl">✔ 実測された効果（GitHub の A/B テスト）</div>
+    <strong>coding agent：PRマージ率 +7%</strong>（メモリ有り90% vs 無し83%）。<strong>code review：好意的フィードバック +2%</strong>（77% vs 75%）。いずれも統計的に高度に有意（p&lt;0.00001）。「タスクを任せたときに望む結果が得られる頻度が上がる」ことを意味します。
+  </div>
+</section>
+
+<!-- ===================== 4. HOW ===================== -->
+<section id="how">
+  <div class="sec-head"><span class="sec-num">04</span><h2>Memoryの仕組み：citation検証</h2></div>
+  <p class="sec-sub">鍵は「citation（コード上の根拠位置）付きで保存し、使う前に実時間で検証する」こと。これで陳腐化を防ぐ。</p>
+
+  <p>記憶システムの本質的な難所は<strong>「保存した知識がコードの変化後も正しいままか」</strong>です。GitHub はオフラインの整理サービスではなく、<span class="em-ink">「検索は難しいが検証は易しい」</span>という性質を突いた<strong>ジャストインタイム検証（just-in-time verification）</strong>を採用しました。記憶には必ず<strong>citation（裏付けとなるコード位置）</strong>を添え、使う直前にそれを照合します。</p>
+
+  <p>記憶の作成は、エージェントが呼び出す<strong>ツール（store_memory）</strong>として実装されています。保存される記憶は例えば次の形です。</p>
+  <pre><code>{
+  <span class="k">subject</span>: "API version synchronization",
+  <span class="k">fact</span>: "API version must match between client SDK, server routes, and docs.",
+  <span class="k">citations</span>: ["src/client/sdk/constants.ts:12", "server/routes/api.go:8",
+               "docs/api-reference.md:37"],
+  <span class="k">reason</span>: "同期が崩れると連携が壊れる。次回更新時に全箇所を揃えるため"
+}</code></pre>
+
+  <figure>
+    <svg viewBox="0 0 860 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Copilot Memoryのcitation検証フロー">
+      <defs>
+        <marker id="hf" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#C15F3C"/></marker>
+        <marker id="hg" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#3F7D54"/></marker>
+      </defs>
+      <g font-family="Hiragino Sans,system-ui,sans-serif">
+        <!-- step1 store -->
+        <rect x="24" y="40" width="200" height="78" rx="11" fill="#F2DBCF" stroke="#E7C3B2"/>
+        <text x="124" y="64" text-anchor="middle" font-size="13" font-weight="800" fill="#A84A2A">① 保存</text>
+        <text x="124" y="86" text-anchor="middle" font-size="10.5" fill="#8a4427">発見をstore_memoryで</text>
+        <text x="124" y="102" text-anchor="middle" font-size="10.5" fill="#8a4427">citation付きで記録</text>
+        <!-- step2 retrieve -->
+        <rect x="330" y="40" width="200" height="78" rx="11" fill="#DEEAF1" stroke="#C5DAE7"/>
+        <text x="430" y="64" text-anchor="middle" font-size="13" font-weight="800" fill="#23415a">② 取得</text>
+        <text x="430" y="86" text-anchor="middle" font-size="10.5" fill="#33597a">次セッション開始時に</text>
+        <text x="430" y="102" text-anchor="middle" font-size="10.5" fill="#33597a">最新メモリをプロンプトへ</text>
+        <!-- step3 verify (diamond) -->
+        <polygon points="700,40 800,79 700,118 600,79" fill="#FBF8F3" stroke="#D6CCBD"/>
+        <text x="700" y="74" text-anchor="middle" font-size="12.5" font-weight="800" fill="#1C1B18">③ 検証</text>
+        <text x="700" y="92" text-anchor="middle" font-size="10" fill="#6E6960">citationは今も妥当?</text>
+        <!-- outcomes -->
+        <rect x="600" y="170" width="200" height="72" rx="11" fill="#E0EEE3" stroke="#BFDDC7"/>
+        <text x="700" y="194" text-anchor="middle" font-size="12.5" font-weight="800" fill="#234b30">一致 → 使用</text>
+        <text x="700" y="214" text-anchor="middle" font-size="10.5" fill="#33694a">タイムスタンプを更新し延命</text>
+        <text x="700" y="230" text-anchor="middle" font-size="10.5" fill="#33694a">（信頼して文脈に投入）</text>
+        <rect x="320" y="170" width="220" height="72" rx="11" fill="#F2DBCF" stroke="#E7C3B2"/>
+        <text x="430" y="194" text-anchor="middle" font-size="12.5" font-weight="800" fill="#A84A2A">矛盾／無効 → 訂正</text>
+        <text x="430" y="214" text-anchor="middle" font-size="10.5" fill="#8a4427">観測に基づき訂正版を保存</text>
+        <text x="430" y="230" text-anchor="middle" font-size="10.5" fill="#8a4427">＝ 記憶プールが自己修復</text>
+
+        <!-- arrows -->
+        <path d="M224,79 L328,79" stroke="#C15F3C" stroke-width="2.2" marker-end="url(#hf)"/>
+        <path d="M530,79 L598,79" stroke="#C15F3C" stroke-width="2.2" marker-end="url(#hf)"/>
+        <path d="M700,118 L700,168" stroke="#3F7D54" stroke-width="2" marker-end="url(#hg)"/>
+        <text x="715" y="148" font-size="10.5" font-weight="700" fill="#3F7D54">妥当</text>
+        <path d="M640,100 L470,168" stroke="#C15F3C" stroke-width="2" marker-end="url(#hf)"/>
+        <text x="520" y="138" font-size="10.5" font-weight="700" fill="#A84A2A">不一致</text>
+      </g>
+    </svg>
+    <figcaption><b>図2</b>：オフライン整理に頼らず<b>使用直前に根拠を照合</b>。敵対的に矛盾メモリを混ぜる試験でも、エージェントは矛盾を検出し訂正版を保存して自己修復した。</figcaption>
+  </figure>
+</section>
+
+<!-- ===================== 5. CROSS-AGENT ===================== -->
+<section id="cross">
+  <div class="sec-head"><span class="sec-num">05</span><h2>エージェント横断の記憶共有</h2></div>
+  <p class="sec-sub">あるエージェントの学びを、別のエージェントが使える。これが Copilot Memory の真価。</p>
+
+  <p>Copilot Memory は単一セッションだけでなく<strong>エージェント面をまたいで共有</strong>されます。あるエージェントが検証した知識を、別のエージェントが再利用できるため、開発ワークフロー全体で知識が蓄積します。GitHub の公式例がこの流れです。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="エージェント横断の記憶共有">
+      <defs>
+        <marker id="cf" markerWidth="9" markerHeight="9" refX="4.5" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#6A5099"/></marker>
+      </defs>
+      <g font-family="Hiragino Sans,system-ui,sans-serif">
+        <!-- shared pool center -->
+        <rect x="300" y="98" width="260" height="60" rx="12" fill="#E8E1F2" stroke="#cfc1ea"/>
+        <text x="430" y="123" text-anchor="middle" font-size="13.5" font-weight="800" fill="#4a3a72">共有メモリ（リポジトリ単位）</text>
+        <text x="430" y="143" text-anchor="middle" font-size="11" fill="#5a4d7a">検証済みの知識が蓄積・自己修復</text>
+
+        <!-- code review -->
+        <rect x="40" y="30" width="220" height="58" rx="11" fill="#DEEAF1" stroke="#C5DAE7"/>
+        <text x="150" y="53" text-anchor="middle" font-size="12.5" font-weight="700" fill="#23415a">code review</text>
+        <text x="150" y="72" text-anchor="middle" font-size="10.5" fill="#33597a">ログ規約を発見・記録</text>
+        <!-- coding agent -->
+        <rect x="40" y="168" width="220" height="58" rx="11" fill="#F2DBCF" stroke="#E7C3B2"/>
+        <text x="150" y="191" text-anchor="middle" font-size="12.5" font-weight="700" fill="#A84A2A">coding agent</text>
+        <text x="150" y="210" text-anchor="middle" font-size="10.5" fill="#8a4427">新サービスに同じ規約を自動適用</text>
+        <!-- CLI -->
+        <rect x="600" y="98" width="220" height="60" rx="11" fill="#E0EEE3" stroke="#BFDDC7"/>
+        <text x="710" y="123" text-anchor="middle" font-size="12.5" font-weight="700" fill="#234b30">Copilot CLI</text>
+        <text x="710" y="142" text-anchor="middle" font-size="10.5" fill="#33694a">その規約でログを追ってデバッグ</text>
+
+        <!-- arrows in/out -->
+        <path d="M260,59 L360,96" stroke="#6A5099" stroke-width="1.8" marker-end="url(#cf)"/>
+        <text x="284" y="74" font-size="10" fill="#5a4d7a">書込</text>
+        <path d="M360,160 L260,197" stroke="#6A5099" stroke-width="1.8" marker-end="url(#cf)"/>
+        <text x="284" y="190" font-size="10" fill="#5a4d7a">読込</text>
+        <path d="M560,128 L598,128" stroke="#6A5099" stroke-width="1.8" marker-end="url(#cf)"/>
+      </g>
+    </svg>
+    <figcaption><b>図3</b>：code review が見つけたログ規約 → coding agent が新コードに自動適用 → CLI がデバッグで活用。<b>経験豊富な開発者の知識が、面を越えて自動的に伝播</b>する。</figcaption>
+  </figure>
+
+  <div class="callout c-info">
+    <div class="ttl">▶ もう一つの効用：知識の平準化</div>
+    熟練者のPRから学んだ規約を、新人のPRに対して code review が「この箇所も更新が必要」と指摘できます。<strong>チーム内のベテランの暗黙知が、自動的に新メンバーへ転移</strong>するわけです。
+  </div>
+</section>
+
+<!-- ===================== 6. INSTRUCTIONS ===================== -->
+<section id="instructions">
+  <div class="sec-head"><span class="sec-num">06</span><h2>カスタム指示（手動・git管理層）</h2></div>
+  <p class="sec-sub">毎回確実に効く、決定的で監査可能な層。自動・揮発的な Memory を補完する“確定の真実の源”。</p>
+
+  <p>Copilot Memory が自動・確率的・失効ありなのに対し、<strong>カスタム指示はあなたが書いて git にコミットする確定的な層</strong>です。リポジトリにある指示ファイルは毎回読まれ、レビューもできます。Copilot は複数の形式に対応します。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="カスタム指示ファイルのスコープ">
+      <g font-family="Hiragino Sans,system-ui,sans-serif">
+        <!-- nested scope rectangles -->
+        <rect x="30" y="28" width="610" height="200" rx="12" fill="#F2DBCF" stroke="#E7C3B2"/>
+        <text x="48" y="50" font-size="12" font-weight="800" fill="#8a4427">リポジトリ全体</text>
+        <rect x="48" y="60" width="574" height="60" rx="9" fill="#fff" stroke="#E7C3B2"/>
+        <text x="64" y="84" font-size="12.5" font-weight="700" fill="#A84A2A" font-family="monospace">.github/copilot-instructions.md</text>
+        <text x="64" y="104" font-size="10.5" fill="#6E6960">リポジトリ全体の指示。毎回読まれる土台</text>
+        <text x="420" y="84" font-size="12.5" font-weight="700" fill="#A84A2A" font-family="monospace">AGENTS.md</text>
+        <text x="420" y="104" font-size="10.5" fill="#6E6960">ツール横断標準（ルート）</text>
+
+        <rect x="48" y="132" width="574" height="48" rx="9" fill="#DEEAF1" stroke="#C5DAE7"/>
+        <text x="64" y="153" font-size="11.5" font-weight="700" fill="#23415a">ディレクトリ単位 ― ネストした <tspan font-family="monospace">AGENTS.md</tspan>（最も近いものが優先）</text>
+        <text x="64" y="171" font-size="10.5" fill="#33597a">モノレポで部分ごとに別ルールを適用</text>
+
+        <rect x="48" y="188" width="574" height="30" rx="8" fill="#E0EEE3" stroke="#BFDDC7"/>
+        <text x="64" y="208" font-size="11" font-weight="700" fill="#234b30" font-family="monospace">.github/instructions/**/*.instructions.md</text>
+        <text x="360" y="208" font-size="10.5" fill="#33694a">applyTo グロブでパス別に適用</text>
+
+        <!-- on-demand prompt files -->
+        <rect x="660" y="28" width="170" height="200" rx="12" fill="#E8E1F2" stroke="#cfc1ea"/>
+        <text x="745" y="52" text-anchor="middle" font-size="12" font-weight="800" fill="#4a3a72">オンデマンド</text>
+        <rect x="676" y="70" width="138" height="138" rx="9" fill="#fff" stroke="#cfc1ea"/>
+        <text x="745" y="96" text-anchor="middle" font-size="11.5" font-weight="700" fill="#4a3a72" font-family="monospace">.prompt.md</text>
+        <text x="745" y="124" text-anchor="middle" font-size="10.5" fill="#5a4d7a">再利用プロンプト</text>
+        <text x="745" y="142" text-anchor="middle" font-size="10.5" fill="#5a4d7a">（定型タスクを</text>
+        <text x="745" y="159" text-anchor="middle" font-size="10.5" fill="#5a4d7a">コマンド化）</text>
+        <text x="745" y="186" text-anchor="middle" font-size="10" fill="#9B958B">例：引き継ぎ更新</text>
+      </g>
+    </svg>
+    <figcaption><b>図4</b>：広い→狭いの順に重なるスコープ。<code>AGENTS.md</code> は<b>最も近いものが優先</b>。<code>CLAUDE.md</code>/<code>GEMINI.md</code> も読まれるため、他ツールと併用しやすい。</figcaption>
+  </figure>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>ファイル</th><th>役割</th><th>いつ使う</th></tr></thead>
+      <tbody>
+        <tr><td class="method">copilot-instructions.md</td><td>リポジトリ全体の指示（ビルド/テストコマンド、規約、作法）。</td><td>まず最初に置く土台</td></tr>
+        <tr><td class="method">AGENTS.md</td><td>ツール横断の標準。ルート＋ネスト可、<strong>最も近いものが優先</strong>。coding agent は2025年8月から対応。</td><td>複数AIツール併用・モノレポ</td></tr>
+        <tr><td class="method">*.instructions.md</td><td><code>.github/instructions/</code> に置き、<code>applyTo</code> グロブで<strong>パス別</strong>に適用。</td><td>領域ごとに規約が違うとき</td></tr>
+        <tr><td class="method">*.prompt.md</td><td><code>.github/prompts/</code> の<strong>再利用プロンプト</strong>。定型操作をコマンド化。</td><td>「引き継ぎ更新」等の反復作業</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout c-key">
+    <div class="ttl">◆ Memory と指示ファイルの役割分担</div>
+    <strong>Memory＝自動・学習・揮発的（28日）</strong>で「気づき」を拾う。<strong>指示ファイル＝手動・確定・恒久</strong>で「必ず守らせる規約」を固定する。両者は競合せず<strong>補完関係</strong>。確定情報は必ず指示ファイル側に置くのが鉄則です。
+  </div>
+</section>
+
+<!-- ===================== 7. MEMORY BANK ON COPILOT ===================== -->
+<section id="membank">
+  <div class="sec-head"><span class="sec-num">07</span><h2>Memory Bank を Copilot で</h2></div>
+  <p class="sec-sub">人が読めて git に乗る“確定の引き継ぎ”が欲しいなら、Memory Bank 方式を Copilot に載せる。</p>
+
+  <p>自動の Memory に加えて、<strong>人手で管理する明示的な引き継ぎ</strong>が欲しい場合は、cline 由来の <strong>Memory Bank 方式を Copilot で再現</strong>するのが定番です。確定情報を Markdown に置き、<code>copilot-instructions.md</code> から「毎回読む」よう指示するだけです。</p>
+
+  <pre><code><span class="c"># 1) 確定の引き継ぎファイルを用意</span>
+memory-bank/
+  ├─ architecture.md      <span class="c"># 構造・設計判断</span>
+  ├─ progress.md          <span class="c"># done / 残り / 既知の問題</span>
+  └─ decisions/           <span class="c"># ADR（なぜを追記式で蓄積）</span>
+
+<span class="c"># 2) .github/copilot-instructions.md に“起動時に読む”を明記</span>
+<span class="k">## Session handoff</span>
+- 作業開始時に必ず memory-bank/progress.md と architecture.md を読むこと
+- 重要な設計判断をしたら decisions/ にADRを追記すること
+- 区切りでは progress.md を「plan / done / files / next」で更新すること
+
+<span class="c"># 3) 定型化：.github/prompts/update-handoff.prompt.md</span>
+<span class="c"># 「memory-bank を現在の状態で更新して」と呼ぶだけで実行</span></code></pre>
+
+  <div class="callout c-good">
+    <div class="ttl">✔ Memory との使い分け</div>
+    <strong>Memory（自動）</strong>は細かな気づきを拾い、<strong>Memory Bank（手動ファイル）</strong>は「人が意図的に残したい確定事項」を持ちます。Memory は28日で失効しますが、<strong>ファイルは git にある限り永続</strong>。重要な引き継ぎはファイル側に置くのが安全です。
+  </div>
+</section>
+
+<!-- ===================== 8. MCP ===================== -->
+<section id="mcp">
+  <div class="sec-head"><span class="sec-num">08</span><h2>MCPで外部メモリ接続</h2></div>
+  <p class="sec-sub">ネイティブMemoryで足りない・ツール横断で共有したいときは、MCPメモリサーバを足す。面によって制約が違う。</p>
+
+  <p>Copilot は MCP に対応したため、<strong>OpenMemory MCP・mem0・agentmemory</strong> などの外部メモリ基盤を接続できます。ただし<strong>エージェント面によって MCP の対応範囲が異なる</strong>点に注意が必要です。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MCP対応範囲の比較">
+      <g font-family="Hiragino Sans,system-ui,sans-serif">
+        <!-- agent mode full -->
+        <rect x="30" y="30" width="380" height="150" rx="13" fill="#E0EEE3" stroke="#BFDDC7"/>
+        <text x="220" y="58" text-anchor="middle" font-size="14.5" font-weight="800" fill="#234b30">Agent mode（VS Code）</text>
+        <text x="220" y="80" text-anchor="middle" font-size="12" fill="#33694a">MCP フル対応</text>
+        <text x="55" y="110" font-size="12" fill="#234b30">✓ tools（ツール）</text>
+        <text x="55" y="132" font-size="12" fill="#234b30">✓ resources（リソース）</text>
+        <text x="55" y="154" font-size="12" fill="#234b30">✓ prompts（プロンプト）</text>
+        <text x="230" y="132" font-size="11" fill="#33694a">→ OpenMemory / mem0 /</text>
+        <text x="230" y="150" font-size="11" fill="#33694a">　 agentmemory を自由に連携</text>
+
+        <!-- coding agent limited -->
+        <rect x="450" y="30" width="380" height="150" rx="13" fill="#F6ECCF" stroke="#E8D49A"/>
+        <text x="640" y="58" text-anchor="middle" font-size="14.5" font-weight="800" fill="#8a6608">Coding agent（クラウド）</text>
+        <text x="640" y="80" text-anchor="middle" font-size="12" fill="#8a6608">MCP は制約あり</text>
+        <text x="475" y="110" font-size="12" fill="#5c4708">✓ tools のみ</text>
+        <text x="475" y="132" font-size="12" fill="#b00">✗ resources / prompts 非対応</text>
+        <text x="475" y="154" font-size="12" fill="#b00">✗ リモートOAuth認証MCP 非対応</text>
+      </g>
+    </svg>
+    <figcaption><b>図5</b>：自由に外部メモリを足せるのは <b>agent mode</b>。クラウドの coding agent は tools 限定なので、恒久情報はリポジトリのファイル＋ネイティブ Memory を主役にする。</figcaption>
+  </figure>
+
+  <div class="callout c-info">
+    <div class="ttl">▶ いつ MCP メモリを足すか</div>
+    ネイティブ Memory は<strong>リポジトリ単位</strong>です。<strong>複数リポジトリ/複数ツールをまたいで同じ記憶を共有したい</strong>、または<strong>高度な検索や長期保持が欲しい</strong>ときに、agent mode で OpenMemory（ローカル）等を重ねるのが妥当です。
+  </div>
+</section>
+
+<!-- ===================== 9. ARCHITECTURE ===================== -->
+<section id="arch">
+  <div class="sec-head"><span class="sec-num">09</span><h2>推奨アーキテクチャ（段階導入）</h2></div>
+  <p class="sec-sub">Copilot 最適の引き継ぎは「自動の土台＋確定のファイル＋必要時のMCP」。上から順に、必要な分だけ。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Copilot向け段階導入アーキテクチャ">
+      <defs>
+        <marker id="af" markerWidth="9" markerHeight="9" refX="4.5" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#9B958B"/></marker>
+        <linearGradient id="axis" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#3F7D54"/><stop offset="1" stop-color="#6A5099"/>
+        </linearGradient>
+      </defs>
+      <g font-family="Hiragino Sans,system-ui,sans-serif">
+        <!-- axis -->
+        <rect x="24" y="34" width="12" height="296" rx="6" fill="url(#axis)"/>
+        <text x="30" y="26" text-anchor="middle" font-size="10.5" fill="#3F7D54" font-weight="700">必須</text>
+        <text x="30" y="348" text-anchor="middle" font-size="10.5" fill="#6A5099" font-weight="700">任意</text>
+
+        <!-- step 1 -->
+        <rect x="60" y="34" width="780" height="54" rx="11" fill="#E0EEE3" stroke="#BFDDC7"/>
+        <circle cx="92" cy="61" r="14" fill="#3F7D54"/><text x="92" y="66" text-anchor="middle" font-size="13" font-weight="800" fill="#fff">1</text>
+        <text x="118" y="57" font-size="13.5" font-weight="800" fill="#234b30">Copilot Memory を ON</text>
+        <text x="118" y="76" font-size="11" fill="#33694a">設定でオン。自動・リポジトリ単位・エージェント横断の記憶。即効・追加作業ゼロ</text>
+
+        <!-- step 2 -->
+        <rect x="60" y="98" width="780" height="54" rx="11" fill="#F2DBCF" stroke="#E7C3B2"/>
+        <circle cx="92" cy="125" r="14" fill="#C15F3C"/><text x="92" y="130" text-anchor="middle" font-size="13" font-weight="800" fill="#fff">2</text>
+        <text x="118" y="121" font-size="13.5" font-weight="800" fill="#A84A2A">copilot-instructions.md ＋ ルート AGENTS.md</text>
+        <text x="118" y="140" font-size="11" fill="#8a4427">恒久・監査可能な“確定の真実の源”。モノレポは *.instructions.md でパス別に</text>
+
+        <!-- step 3 -->
+        <rect x="60" y="162" width="780" height="54" rx="11" fill="#DEEAF1" stroke="#C5DAE7"/>
+        <circle cx="92" cy="189" r="14" fill="#3A6B8C"/><text x="92" y="194" text-anchor="middle" font-size="13" font-weight="800" fill="#fff">3</text>
+        <text x="118" y="185" font-size="13.5" font-weight="800" fill="#23415a">Memory Bank式の確定ファイル ＋ prompt files</text>
+        <text x="118" y="204" font-size="11" fill="#33597a">progress.md / decisions(ADR) を置き instructions から参照。更新を .prompt.md で定型化</text>
+
+        <!-- step 4 -->
+        <rect x="60" y="226" width="780" height="54" rx="11" fill="#FBF8F3" stroke="#D6CCBD"/>
+        <circle cx="92" cy="253" r="14" fill="#6E6960"/><text x="92" y="258" text-anchor="middle" font-size="13" font-weight="800" fill="#fff">4</text>
+        <text x="118" y="249" font-size="13.5" font-weight="800" fill="#3a3a3a">coding agent（クラウド）を使うなら AGENTS.md を厚めに</text>
+        <text x="118" y="268" font-size="11" fill="#6E6960">使い捨て環境で自律実行 → 恒久情報は必ずリポジトリ側に。Memory も有効化</text>
+
+        <!-- step 5 -->
+        <rect x="60" y="290" width="780" height="54" rx="11" fill="#E8E1F2" stroke="#cfc1ea"/>
+        <circle cx="92" cy="317" r="14" fill="#6A5099"/><text x="92" y="322" text-anchor="middle" font-size="13" font-weight="800" fill="#fff">5</text>
+        <text x="118" y="313" font-size="13.5" font-weight="800" fill="#4a3a72">必要に応じて MCP メモリ（OpenMemory 等）を agent mode に</text>
+        <text x="118" y="332" font-size="11" fill="#5a4d7a">複数リポジトリ/ツール横断の共有・高度検索が要るときだけ上乗せ</text>
+      </g>
+    </svg>
+    <figcaption><b>図6</b>：1・2 は全員に推奨。3 で手動の確定引き継ぎを足し、4・5 は使い方に応じて。<b>「自動（Memory）と確定（ファイル）の二本立て」</b>が Copilot の要。</figcaption>
+  </figure>
+</section>
+
+<!-- ===================== 10. NOTES ===================== -->
+<section id="notes">
+  <div class="sec-head"><span class="sec-num">10</span><h2>注意点・使い分け</h2></div>
+  <p class="sec-sub">Copilot 固有の落とし穴と、目的別の早見表。</p>
+
+  <ul class="clean">
+    <li><strong>Memory は揮発的</strong>：約28日で失効し、自動・確率的でプレビュー段階。<strong>確定情報は必ず指示ファイル/Memory Bank に</strong>置く。</li>
+    <li><strong>Memory はリポジトリ単位</strong>：横断共有はしない。複数リポジトリ/ツールで共有したいなら MCP メモリを検討。</li>
+    <li><strong>coding agent の MCP 制約</strong>：tools のみ・resources/prompts 非対応・リモートOAuth MCP 非対応。クラウドでは外部メモリに頼り切らない。</li>
+    <li><strong>プラン要件</strong>：Memory は有料プラン＋オプトイン（Pro/Pro+ は既定ON）。組織では管理設定の確認を。</li>
+  </ul>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>やりたいこと</th><th>使うもの</th></tr></thead>
+      <tbody>
+        <tr><td>手間ゼロで自動的に文脈を引き継ぎたい</td><td class="method">Copilot Memory（ON にするだけ）</td></tr>
+        <tr><td>必ず守らせる規約・恒久情報を固定したい</td><td class="method">copilot-instructions.md ／ AGENTS.md</td></tr>
+        <tr><td>人手で意図的に引き継ぎを残したい</td><td class="method">Memory Bank式ファイル ＋ prompt files</td></tr>
+        <tr><td>領域ごとに別ルールを当てたい（モノレポ）</td><td class="method">*.instructions.md（applyTo）</td></tr>
+        <tr><td>複数ツール/リポジトリで記憶を共有したい</td><td class="method">MCPメモリ（OpenMemory等・agent mode）</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout c-key">
+    <div class="ttl">◆ ひとことで</div>
+    Copilot の引き継ぎは <strong>「自動の Copilot Memory」と「確定の指示ファイル」の二本立て</strong>が核。前者で手間なく賢くなり、後者で重要事項を固定する。MCP はその先の拡張です。
+  </div>
+</section>
+
+<!-- ===================== 11. REFS ===================== -->
+<section id="refs">
+  <div class="sec-head"><span class="sec-num">11</span><h2>出典</h2></div>
+  <p class="sec-sub">GitHub 公式の一次情報（Docs・Changelog・エンジニアリングブログ）を主軸に作成。</p>
+  <ul class="clean">
+    <li><a href="https://docs.github.com/en/copilot/concepts/agents/copilot-memory">About GitHub Copilot Memory ― GitHub Docs</a>：スコープ・28日失効・検証・横断共有の原典。</li>
+    <li><a href="https://github.blog/ai-and-ml/github-copilot/building-an-agentic-memory-system-for-github-copilot/">Building an agentic memory system for GitHub Copilot ― GitHub Blog（2026-01-15）</a>：citation検証・store_memory・効果計測の詳細。</li>
+    <li><a href="https://github.blog/changelog/2026-03-04-copilot-memory-now-on-by-default-for-pro-and-pro-users-in-public-preview/">Copilot Memory now on by default for Pro/Pro+（Changelog, 2026-03-04）</a></li>
+    <li><a href="https://docs.github.com/copilot/customizing-copilot/adding-custom-instructions-for-github-copilot">Adding repository custom instructions for GitHub Copilot ― GitHub Docs</a>：copilot-instructions / instructions / prompt files。</li>
+    <li><a href="https://github.blog/changelog/2025-08-28-copilot-coding-agent-now-supports-agents-md-custom-instructions/">Copilot coding agent now supports AGENTS.md（Changelog, 2025-08-28）</a></li>
+    <li><a href="https://docs.github.com/en/copilot/tutorials/enhance-agent-mode-with-mcp">Enhancing GitHub Copilot agent mode with MCP ― GitHub Docs</a>／<a href="https://docs.github.com/en/copilot/concepts/agents/coding-agent/mcp-and-coding-agent">MCP and Copilot coding agent ― GitHub Docs</a>：MCP対応範囲と制約。</li>
+  </ul>
+  <p class="src">※ Copilot Memory は公開プレビューで、仕様・既定値・対応面は変わり得ます。導入時は最新の公式ドキュメントをご確認ください。</p>
+</section>
+
+<p style="text-align:center; color:var(--faint); font-size:13px; margin:40px 0 10px">― 以上 ―</p>
+
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <h4>このドキュメントについて</h4>
+    <p style="color:#C9C2B6">2026年6月時点の GitHub 公式情報（Docs、Changelog、エンジニアリングブログ「Building an agentic memory system for GitHub Copilot」2026-01-15）に基づき作成。Copilot Memory は公開プレビューで仕様・既定値が変わり得るため、導入時は最新の公式ドキュメントをご確認ください。</p>
+  </div>
+</footer>
+
+</body>
+</html>
