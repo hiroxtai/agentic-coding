@@ -76,7 +76,7 @@ spec-driven-handoff-kit/
 このキットの `shared/` の中身を、あなたのリポジトリのルートにコピーします。
 
 ```bash
-cp -r shared/AGENTS.md shared/memory-bank shared/specs <your-repo>/
+cp -r shared/AGENTS.md shared/REVIEW.md shared/memory-bank shared/specs <your-repo>/
 mkdir -p <your-repo>/.specify/memory && cp shared/constitution.md <your-repo>/.specify/memory/constitution.md
 ```
 
@@ -103,6 +103,9 @@ specify init . --integration codex
 | grill-me | `.github/prompts/grill-me.prompt.md` | `.claude/skills/grill-me/SKILL.md` | Codex の skills ディレクトリに `grill-me/SKILL.md` |
 | resume-session | `.github/prompts/resume-session.prompt.md` | `.claude/skills/resume-session/SKILL.md` | 同上 |
 | update-handoff | `.github/prompts/update-handoff.prompt.md` | `.claude/skills/update-handoff/SKILL.md` | 同上 |
+| self-review | `.github/prompts/self-review.prompt.md` | `.claude/skills/self-review/SKILL.md` | 同上 |
+| learn-from-reviews | `.github/prompts/learn-from-reviews.prompt.md` | `.claude/skills/learn-from-reviews/SKILL.md` | 同上 |
+| レビュー基準 | `.github/instructions/*.instructions.md` | `REVIEW.md`（ルート・最優先） | `AGENTS.md` / `REVIEW.md` |
 
 ```bash
 # Copilot 用
@@ -145,6 +148,7 @@ cp -r skills/* <your-repo>/.claude/skills/
 (3) 計画    → plan.md（スタック・構成・制約）。必要なら plan も grill
 (4) 分解    → tasks.md（小さく検証可能な単位）
 (5) 実装    → tasks を1つずつ。各タスクで検証
+(5.5)自己レビュー → self-review で差分を敵対的レビュー＋修正（PR前）
 (6) 記録    → 重要判断は ADR、progress を更新
 (7) 引き継ぎ→ update-handoff（差分を提示）
 ```
@@ -159,8 +163,10 @@ cp -r skills/* <your-repo>/.claude/skills/
 | (3) 計画 | `/speckit.plan` | `/speckit.plan` | `/speckit.plan` |
 | (4) 分解 | `/speckit.tasks` | `/speckit.tasks` | `/speckit.tasks` |
 | (5) 実装 | `/speckit.implement` | `/speckit.implement` | `/speckit.implement` |
+| (5.5) 自己レビュー | `/self-review` | `/self-review` | self-review スキル |
 | (6) 記録 | 「この決定をADRに追記して」 | 同左 | 同左 |
 | (7) 引き継ぎ | `/update-handoff` | `/update-handoff` | update-handoff スキル |
+| (随時) 指摘学習 | `/learn-from-reviews` | `/learn-from-reviews` | learn-from-reviews スキル |
 
 ### そのまま使えるプロンプト（スラッシュを使わない場合）
 
@@ -174,6 +180,12 @@ cp -r skills/* <your-repo>/.claude/skills/
 ```text
 合意した内容で specs/<NNNN-slug>/spec.md を確定して（何を・なぜ・受け入れ条件・スコープ外・E2E検証）。
 次に plan.md（スタック・構成・制約）、続いて tasks.md（単独で実装・検証できる小タスク）に分解して。
+```
+
+**セルフレビュー（PR前）:**
+```text
+PRを出す前に、いまの差分を別人のレビュアーとして批評して。正しさ・セキュリティ・仕様適合・テストを
+重大度（Important/Nit）付きで指摘し、Important は直して、テストを通して結果を見せて。
 ```
 
 **引き継ぎ更新:**

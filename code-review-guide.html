@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>コードレビューと指摘学習 ― セルフレビュー＋学習ループ（2026）</title>
+<style>
+  :root{
+    --bg:#F4EFE7; --surface:#FFFFFF; --surface-2:#FBF8F3;
+    --ink:#1C1B18; --muted:#6E6960; --faint:#9B958B;
+    --accent:#C15F3C; --accent-deep:#A84A2A; --accent-soft:#F2DBCF;
+    --line:#E5DDD1; --line-strong:#D6CCBD;
+    --good:#3F7D54; --good-soft:#E0EEE3;
+    --warn:#B8860B; --warn-soft:#F6ECCF;
+    --info:#3A6B8C; --info-soft:#DEEAF1;
+    --violet:#6A5099; --violet-soft:#E8E1F2;
+    --shadow:0 1px 2px rgba(40,30,20,.04),0 8px 24px rgba(40,30,20,.06);
+    --radius:16px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    line-height:1.85; font-size:16.5px; letter-spacing:.01em; -webkit-font-smoothing:antialiased;}
+  .wrap{max-width:980px; margin:0 auto; padding:0 22px}
+  h1,h2,h3,h4{line-height:1.4; letter-spacing:.005em}
+
+  .hero{background:
+      radial-gradient(110% 130% at 90% -10%, rgba(193,95,60,.20), transparent 55%),
+      radial-gradient(120% 150% at 35% -25%, rgba(58,107,140,.15), transparent 55%),
+      radial-gradient(110% 130% at -10% 0%, rgba(63,125,84,.16), transparent 50%),
+      linear-gradient(180deg,#211F1B 0%, #2B2823 100%);
+    color:#F4EFE7; padding:62px 0 54px; position:relative; overflow:hidden;}
+  .hero .wrap{position:relative; z-index:2}
+  .kicker{display:inline-block; font-size:12.5px; letter-spacing:.16em; text-transform:uppercase; color:#E6BBA6; border:1px solid rgba(230,187,166,.4); padding:5px 12px; border-radius:999px; margin-bottom:22px}
+  .hero h1{font-size:34px; margin:0 0 16px; font-weight:800}
+  .hero h1 .em{color:#E89B79}
+  .hero p.lead{font-size:17px; color:#D9D2C7; max-width:790px; margin:0 0 24px}
+  .hero .meta{display:flex; flex-wrap:wrap; gap:10px 22px; font-size:13.5px; color:#B2B6AE}
+  .hero .meta b{color:#E6BBA6; font-weight:600}
+  .hero-figs{display:flex; flex-wrap:wrap; gap:10px; margin-top:28px}
+  .chip{background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); padding:7px 14px; border-radius:999px; font-size:13px; color:#EFE8DC}
+  .chip b{color:#E89B79; font-weight:700}
+
+  section{padding:42px 0 8px}
+  .sec-head{display:flex; align-items:baseline; gap:14px; margin-bottom:8px}
+  .sec-num{font-size:13px; font-weight:800; color:var(--accent); letter-spacing:.1em; border:1.5px solid var(--accent-soft); background:var(--surface); border-radius:8px; padding:3px 9px; white-space:nowrap}
+  h2{font-size:24px; margin:0; font-weight:800}
+  .sec-sub{color:var(--muted); font-size:15.5px; margin:6px 0 20px}
+  h3{font-size:18px; margin:26px 0 10px; font-weight:700}
+  p{margin:0 0 16px}
+  a{color:var(--accent-deep); text-decoration:none; border-bottom:1px solid var(--accent-soft)}
+  a:hover{border-bottom-color:var(--accent)}
+  strong{font-weight:700}
+  .em-ink{color:var(--accent-deep); font-weight:700}
+
+  .callout{border-radius:14px; padding:15px 18px; margin:18px 0; font-size:15px; border:1px solid}
+  .callout .ttl{font-weight:800; font-size:13.5px; letter-spacing:.04em; margin-bottom:6px}
+  .c-key{background:var(--accent-soft); border-color:#E7C3B2; color:#5e2a17}
+  .c-key .ttl{color:var(--accent-deep)}
+  .c-good{background:var(--good-soft); border-color:#BFDDC7; color:#234b30}
+  .c-good .ttl{color:var(--good)}
+  .c-info{background:var(--info-soft); border-color:#C5DAE7; color:#274558}
+  .c-info .ttl{color:var(--info)}
+  .c-warn{background:var(--warn-soft); border-color:#E8D49A; color:#5c4708}
+  .c-warn .ttl{color:#8a6608}
+
+  .toc{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:22px 26px; box-shadow:var(--shadow); margin:30px 0 6px}
+  .toc h4{margin:0 0 14px; font-size:13px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted)}
+  .toc ol{margin:0; padding:0; list-style:none; counter-reset:t; display:grid; grid-template-columns:1fr 1fr; gap:6px 28px}
+  .toc li{counter-increment:t; font-size:15px; padding:5px 0; border-bottom:1px dashed var(--line)}
+  .toc li a{border:0; color:var(--ink); display:flex; gap:10px; align-items:baseline}
+  .toc li a:hover{color:var(--accent-deep)}
+  .toc li a::before{content:counter(t,decimal-leading-zero); color:var(--accent); font-weight:800; font-size:12.5px; min-width:22px}
+
+  figure{margin:22px 0; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:22px 20px 14px; box-shadow:var(--shadow)}
+  figure svg{display:block; width:100%; height:auto}
+  figcaption{font-size:13px; color:var(--muted); text-align:center; margin-top:12px; padding-top:10px; border-top:1px dashed var(--line)}
+  figcaption b{color:var(--accent-deep)}
+
+  pre{background:#211F1B; color:#EFE8DC; border-radius:12px; padding:14px 16px; overflow-x:auto; font-family:"SF Mono",Menlo,Consolas,monospace; font-size:12.5px; line-height:1.7; margin:14px 0}
+  pre code{background:none; border:0; color:#EFE8DC; padding:0}
+  pre .c{color:#9B958B}
+  pre .k{color:#E89B79}
+  code{font-family:"SF Mono",Menlo,Consolas,monospace; font-size:12.5px; color:var(--accent-deep); background:var(--surface-2); border:1px solid var(--line); border-radius:5px; padding:1px 6px}
+
+  /* chat */
+  .you{background:#23211C;color:#EFE8DC;border-radius:12px;padding:10px 14px;margin:10px 0 6px;border-left:3px solid var(--accent)}
+  .you .who{display:block;font-size:10.5px;letter-spacing:.08em;color:#E6BBA6;font-weight:700;margin-bottom:5px;text-transform:uppercase}
+  .you .cmd{font-family:"SF Mono",Menlo,Consolas,monospace;font-size:12.5px;color:#EFE8DC;line-height:1.6;display:block;white-space:pre-wrap}
+  .you .cmd b{color:#E89B79;font-weight:700}
+  .agent{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:11px 16px;margin:6px 0 10px;font-size:14px;color:#3a3833}
+  .agent .who{display:block;font-size:10.5px;letter-spacing:.06em;color:var(--info);font-weight:700;margin-bottom:4px;text-transform:uppercase}
+  .agent code{font-size:12px}
+
+  .tbl-wrap{overflow-x:auto; margin:18px 0; border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow)}
+  table{border-collapse:collapse; width:100%; font-size:13.5px; background:var(--surface)}
+  th,td{text-align:left; padding:11px 14px; border-bottom:1px solid var(--line); vertical-align:top}
+  thead th{background:var(--surface-2); font-weight:700; font-size:13px; border-bottom:2px solid var(--line-strong)}
+  tbody tr:last-child td{border-bottom:0}
+  tbody tr:hover{background:var(--surface-2)}
+  td.k{font-weight:700;color:var(--accent-deep);white-space:nowrap}
+  td code{background:var(--surface-2)}
+  .sev{display:inline-block;font-size:11px;font-weight:700;padding:1px 8px;border-radius:999px}
+  .sev-i{background:#F4D9CF;color:#A84A2A}
+  .sev-n{background:#F6ECCF;color:#8a6608}
+
+  ul.clean{margin:6px 0 18px; padding:0; list-style:none}
+  ul.clean li{position:relative; padding:4px 0 4px 26px; font-size:15.5px}
+  ul.clean li::before{content:""; position:absolute; left:6px; top:14px; width:7px; height:7px; border-radius:2px; background:var(--accent); transform:rotate(45deg)}
+
+  .src{font-size:13px; color:var(--muted)}
+  footer{margin-top:48px; background:#211F1B; color:#C9C2B6; padding:36px 0}
+  footer .wrap{font-size:13.5px}
+  footer h4{color:#E6BBA6; margin:0 0 10px; font-size:13px; letter-spacing:.1em; text-transform:uppercase}
+  footer a{color:#D9B6A4;border-bottom:1px solid rgba(217,182,164,.3)}
+
+  @media(max-width:680px){
+    .hero h1{font-size:26px}
+    h2{font-size:20px}
+    .toc ol{grid-template-columns:1fr}
+    .wrap{padding:0 16px}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="kicker">Code Review · Self-review &amp; Learning Loop</span>
+    <h1>コードレビューと<span class="em">指摘学習</span></h1>
+    <p class="lead">PRを出す前にコーディングエージェントで「セルフレビュー＆修正」を回し、さらにPRで受けた指摘の傾向を学習して<strong>同じ指摘が再発しないルール/スキル</strong>に変える ― この2つのループの作り方を、GitHub Copilot / Claude Code（Codex補足）の具体的な使用例・指示例とともにまとめます。</p>
+    <div class="meta">
+      <span><b>対象</b> Copilot / Claude Code / Codex</span>
+      <span><b>時点</b> 2026年6月</span>
+      <span><b>付随</b> 統合キットに self-review / learn-from-reviews を追加済み</span>
+    </div>
+    <div class="hero-figs">
+      <span class="chip"><b>2</b> つのループ</span>
+      <span class="chip">具体的な<b>指示例</b>つき</span>
+      <span class="chip"><b>指摘→ルール</b>化の自動パイプライン</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <nav class="toc" aria-label="目次">
+    <h4>目次</h4>
+    <ol>
+      <li><a href="#overview">全体像：2つのループ</a></li>
+      <li><a href="#selfloop">セルフレビューの型</a></li>
+      <li><a href="#claude">Claude Code でのセルフレビュー</a></li>
+      <li><a href="#copilot">GitHub Copilot でのセルフレビュー</a></li>
+      <li><a href="#codex">Codex・共通の型</a></li>
+      <li><a href="#learnloop">指摘学習ループ</a></li>
+      <li><a href="#pipeline">learn-from-reviews パイプライン</a></li>
+      <li><a href="#kit">統合キットへの組み込み</a></li>
+      <li><a href="#example">実践例（指示例つき）</a></li>
+      <li><a href="#tools">専用レビューア・注意点</a></li>
+      <li><a href="#refs">出典</a></li>
+    </ol>
+  </nav>
+
+<!-- ===================== 1. OVERVIEW ===================== -->
+<section id="overview">
+  <div class="sec-head"><span class="sec-num">01</span><h2>全体像：2つのループ</h2></div>
+  <p class="sec-sub">「出す前に自分で直す」内側のループと、「指摘を学習して二度と出さない」外側のループ。</p>
+
+  <p>コーディングエージェントによるレビューは、<strong>2つのループ</strong>で考えると整理できます。
+  <span class="em-ink">①セルフレビュー・ループ</span>はPRを出す前に自分の差分を直すもの。
+  <span class="em-ink">②指摘学習ループ</span>はPRで受けた指摘の傾向を恒久ルールに変え、同じ指摘を再発させないものです。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="セルフレビューと指摘学習の2ループ">
+      <defs>
+        <marker id="m1" markerWidth="9" markerHeight="9" refX="4.5" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#6E6960"/></marker>
+        <marker id="m2" markerWidth="9" markerHeight="9" refX="4.5" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#3F7D54"/></marker>
+        <marker id="m3" markerWidth="9" markerHeight="9" refX="4.5" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#6A5099"/></marker>
+      </defs>
+      <g font-family="Hiragino Sans,system-ui,sans-serif" font-size="12">
+        <!-- nodes -->
+        <rect x="40" y="96" width="120" height="50" rx="10" fill="#FBF8F3" stroke="#D6CCBD"/><text x="100" y="118" text-anchor="middle" font-weight="800">実装完了</text><text x="100" y="135" text-anchor="middle" font-size="10" fill="#6E6960">tasks 完了</text>
+        <rect x="210" y="96" width="150" height="50" rx="10" fill="#E0EEE3" stroke="#BFDDC7"/><text x="285" y="116" text-anchor="middle" font-weight="800" fill="#234b30">セルフレビュー</text><text x="285" y="133" text-anchor="middle" font-size="10" fill="#33694a">/self-review → 修正</text>
+        <rect x="410" y="96" width="110" height="50" rx="10" fill="#F2DBCF" stroke="#E7C3B2"/><text x="465" y="118" text-anchor="middle" font-weight="800" fill="#A84A2A">PR 作成</text><text x="465" y="135" text-anchor="middle" font-size="10" fill="#8a4427">クリーンな差分</text>
+        <rect x="570" y="96" width="140" height="50" rx="10" fill="#DEEAF1" stroke="#C5DAE7"/><text x="640" y="116" text-anchor="middle" font-weight="800" fill="#23415a">レビュー</text><text x="640" y="133" text-anchor="middle" font-size="10" fill="#33597a">人間 ＋ AI ＋ CI</text>
+        <rect x="600" y="208" width="180" height="46" rx="10" fill="#E8E1F2" stroke="#cfc1ea"/><text x="690" y="228" text-anchor="middle" font-weight="800" fill="#4a3a72">learn-from-reviews</text><text x="690" y="244" text-anchor="middle" font-size="10" fill="#5a4d7a">指摘を集約・ルール化</text>
+        <rect x="300" y="208" width="200" height="46" rx="10" fill="#F2DBCF" stroke="#E7C3B2"/><text x="400" y="228" text-anchor="middle" font-weight="800" fill="#A84A2A">レビュー基準ファイル</text><text x="400" y="244" text-anchor="middle" font-size="10" fill="#8a4427">REVIEW.md / instructions</text>
+
+        <!-- main flow -->
+        <path d="M160,121 L208,121" stroke="#6E6960" stroke-width="1.8" marker-end="url(#m1)"/>
+        <path d="M360,121 L408,121" stroke="#6E6960" stroke-width="1.8" marker-end="url(#m1)"/>
+        <path d="M520,121 L568,121" stroke="#6E6960" stroke-width="1.8" marker-end="url(#m1)"/>
+        <!-- inner self-review loop -->
+        <path d="M250,146 C235,178 320,178 305,148" fill="none" stroke="#3F7D54" stroke-width="1.8" marker-end="url(#m2)"/>
+        <text x="285" y="192" text-anchor="middle" font-size="10.5" fill="#3F7D54" font-weight="700">① 出す前に直す（内側ループ）</text>
+        <!-- learning loop -->
+        <path d="M640,146 L688,206" stroke="#6A5099" stroke-width="1.6" marker-end="url(#m3)"/>
+        <text x="700" y="180" font-size="10" fill="#5a4d7a">指摘</text>
+        <path d="M598,231 L502,231" stroke="#6A5099" stroke-width="1.6" marker-end="url(#m3)"/>
+        <path d="M380,206 C380,170 400,160 400,148" fill="none" stroke="#6A5099" stroke-width="1.6" marker-end="url(#m3)"/>
+        <text x="400" y="190" text-anchor="middle" font-size="10.5" fill="#6A5099" font-weight="700">② 学習して再発を防ぐ（外側ループ）</text>
+        <text x="430" y="276" text-anchor="middle" font-size="10" fill="#9B958B">ルールが次回のセルフレビュー基準に反映 → 同じ指摘が出なくなる</text>
+      </g>
+    </svg>
+    <figcaption><b>図1</b>：内側＝<b>PR前に自分で直す</b>。外側＝<b>受けた指摘をルール化</b>し、それが次回のセルフレビュー基準に反映される。2つが噛み合うと、レビュー指摘が回を追うごとに減る。</figcaption>
+  </figure>
+</section>
+
+<!-- ===================== 2. SELF-REVIEW LOOP ===================== -->
+<section id="selfloop">
+  <div class="sec-head"><span class="sec-num">02</span><h2>セルフレビューの型</h2></div>
+  <p class="sec-sub">人に見せる前にエージェントが「別人のレビュアー」として差分を批評し、自分で直す。</p>
+
+  <p>セルフレビューの肝は<strong>「作業者≠採点者」</strong>です。実装した同じ文脈で甘く見るのではなく、
+  <strong>新しい視点で差分と基準だけを見て</strong>批評させます。重大度（Important / Nit）を付けさせ、
+  <strong>Important は必ず修正</strong>してから検証で締めます。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="セルフレビューの工程">
+      <defs><marker id="sf" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#C15F3C"/></marker></defs>
+      <g font-family="Hiragino Sans,system-ui,sans-serif" font-size="12">
+        <rect x="24" y="46" width="140" height="56" rx="10" fill="#E0EEE3" stroke="#BFDDC7"/><text x="94" y="70" text-anchor="middle" font-weight="800" fill="#234b30">実装</text><text x="94" y="88" text-anchor="middle" font-size="10" fill="#33694a">tasks 完了</text>
+        <rect x="194" y="46" width="170" height="56" rx="10" fill="#DEEAF1" stroke="#C5DAE7"/><text x="279" y="68" text-anchor="middle" font-weight="800" fill="#23415a">自己レビュー</text><text x="279" y="86" text-anchor="middle" font-size="10" fill="#33597a">別視点で差分を批評・重大度付け</text>
+        <rect x="394" y="46" width="160" height="56" rx="10" fill="#F2DBCF" stroke="#E7C3B2"/><text x="474" y="68" text-anchor="middle" font-weight="800" fill="#A84A2A">Important を修正</text><text x="474" y="86" text-anchor="middle" font-size="10" fill="#8a4427">Nit は任意</text>
+        <rect x="584" y="46" width="130" height="56" rx="10" fill="#E0EEE3" stroke="#BFDDC7"/><text x="649" y="68" text-anchor="middle" font-weight="800" fill="#234b30">検証</text><text x="649" y="86" text-anchor="middle" font-size="10" fill="#33694a">test/lint/build 緑</text>
+        <rect x="744" y="46" width="92" height="56" rx="10" fill="#211F1B"/><text x="790" y="70" text-anchor="middle" font-weight="800" fill="#E6BBA6">PR</text><text x="790" y="88" text-anchor="middle" font-size="10" fill="#C9C2B6">作成</text>
+        <path d="M164,74 L192,74" stroke="#C15F3C" stroke-width="2" marker-end="url(#sf)"/>
+        <path d="M364,74 L392,74" stroke="#C15F3C" stroke-width="2" marker-end="url(#sf)"/>
+        <path d="M554,74 L582,74" stroke="#C15F3C" stroke-width="2" marker-end="url(#sf)"/>
+        <path d="M714,74 L742,74" stroke="#C15F3C" stroke-width="2" marker-end="url(#sf)"/>
+        <path d="M474,104 C474,128 279,128 279,104" fill="none" stroke="#9B958B" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#sf)"/>
+        <text x="377" y="140" text-anchor="middle" font-size="10" fill="#6E6960">指摘が残れば再レビュー</text>
+      </g>
+    </svg>
+    <figcaption><b>図2</b>：これを「実装」と「PR作成」の<b>間に1工程として組み込む</b>（統合ワークフローの Step 5.5）。重大度の基準は <code>REVIEW.md</code> / instructions で調整する。</figcaption>
+  </figure>
+</section>
+
+<!-- ===================== 3. CLAUDE CODE ===================== -->
+<section id="claude">
+  <div class="sec-head"><span class="sec-num">03</span><h2>Claude Code でのセルフレビュー</h2></div>
+  <p class="sec-sub">ローカルの <code>/code-review</code> が本命。GitHub App なしでセッション内で差分を批評・修正できる。</p>
+
+  <h3>① ローカル <code>/code-review</code>（PR前の自己レビュー）</h3>
+  <p>任意の Claude Code セッションで実行すると、<strong>いまの差分</strong>をレビューします（GitHub App 不要）。
+  正しさのバグに加え、再利用・簡素化・効率の改善も拾います。</p>
+  <pre><code><span class="c"># いまの差分をレビュー（指摘を表示）</span>
+/code-review
+
+<span class="c"># レビューして、見つけた指摘を作業ツリーに自動修正</span>
+/code-review --fix
+
+<span class="c"># 指摘をPRのインラインコメントとして投稿</span>
+/code-review --comment
+
+<span class="c"># クラウドの深い多エージェントレビュー（ultrareview）→ 結果を適用</span>
+/code-review ultra --fix
+
+<span class="c"># 特定のパス/PRを対象に。effort を上げると広く（不確実な指摘も）拾う</span>
+/code-review src/auth/  <span class="c"># 例</span></code></pre>
+
+  <h3>② <code>/security-review</code>（脆弱性特化）と CI</h3>
+  <p>バンドル済みの <code>/security-review</code> で差分のセキュリティ分析。CI に載せるなら公式の
+  <strong>GitHub Action（<code>anthropics/claude-code-security-review</code>）</strong>がPR差分をスキャンして
+  コメントします（PRを<strong>ブロックはしない</strong>＝既存フローを壊さない）。</p>
+
+  <h3>③ レビュー基準のチューニング：<code>REVIEW.md</code></h3>
+  <p>レビューの挙動は2つのファイルで調整できます。学習した指摘ルールは <code>REVIEW.md</code> に蓄積します。</p>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>ファイル</th><th>役割</th></tr></thead>
+      <tbody>
+        <tr><td class="k">CLAUDE.md</td><td>全タスク共通のプロジェクト指示。レビューでは「新たに導入された違反」を <span class="sev sev-n">Nit</span> として指摘。</td></tr>
+        <tr><td class="k">REVIEW.md</td><td><strong>レビュー専用・最優先</strong>。全レビューエージェントの先頭に注入される。重大度の再定義、スキップ、リポジトリ固有チェック（例「新規APIルートに結合テスト必須」）、検証バーを書く。</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>重大度は <span class="sev sev-i">🔴 Important</span>（マージ前に直すべきバグ）／<span class="sev sev-n">🟡 Nit</span>（任意）／<span style="display:inline-block;font-size:11px;font-weight:700;padding:1px 8px;border-radius:999px;background:#eee;color:#555">🟣 Pre-existing</span>（既存バグ）の3段階。各指摘には検証の根拠が付き、偽陽性は検証ステップで除去されます。</p>
+
+  <div class="callout c-info">
+    <div class="ttl">▶ 指示例（セッション内）</div>
+    <div class="you" style="margin-top:8px"><span class="who">▷ あなた</span><span class="cmd">実装できた。PRを出す前に <b>/code-review --fix</b> でセルフレビューして、
+Important は直して。直したらテストを通して結果を見せて。</span></div>
+    <div class="agent"><span class="who">Claude Code</span>差分をレビューしました。<span class="sev sev-i">Important</span> 2件（トークン失効の競合、テナント未スコープのクエリ）を修正し、<span class="sev sev-n">Nit</span> 3件は要約に記載。<code>npm test</code> 緑です。差分を提示します。</div>
+  </div>
+</section>
+
+<!-- ===================== 4. COPILOT ===================== -->
+<section id="copilot">
+  <div class="sec-head"><span class="sec-num">04</span><h2>GitHub Copilot でのセルフレビュー</h2></div>
+  <p class="sec-sub">VS Code の「Copilot code review」を未コミット変更に実行。2026年3月から agentic に。</p>
+
+  <p>Copilot は <strong>VS Code でローカルの未コミット変更（または選択範囲）をレビュー</strong>できます。
+  2026年3月から <em>agentic</em> になり、<strong>リポジトリを探索して横断的な文脈を読んでから</strong>指摘します
+  （旧来の行単位の浅いレビューから進化）。PR を出す前のセルフレビューに使えます。</p>
+
+  <h3>レビュー観点の指定：instructions ファイル</h3>
+  <p>レビューのルールは次に書きます（コーディング用の指示と同じファイル群を読む）。</p>
+  <ul class="clean">
+    <li><code>.github/copilot-instructions.md</code> … リポジトリ全体のレビュー観点（<strong>4000字制限</strong>。短く要点を）。</li>
+    <li><code>.github/instructions/*.instructions.md</code> … <code>applyTo</code> でパス別のレビュー観点。</li>
+  </ul>
+  <p>さらに、<strong>Copilot Memory</strong> がコードレビューで学んだ規約を citation つきで自動保存し、
+  次回のコーディング・レビューに適用します（後述の学習ループのネイティブ版）。</p>
+
+  <div class="callout c-info">
+    <div class="ttl">▶ 指示例（VS Code・agent mode）</div>
+    <div class="you" style="margin-top:8px"><span class="who">▷ あなた</span><span class="cmd">この未コミットの差分を、別人のレビュアーとしてレビューして。
+正しさ・セキュリティ・テスト不足を重大度付きで指摘し、Important は直して。
+AGENTS.md と .github/instructions のルールに反していないかも確認して。</span></div>
+    <div class="agent"><span class="who">Copilot（agent mode）</span>関連ファイルを読みました。<code>resetPassword</code> でレート制限が要求エンドポイントにのみ適用され、確認エンドポイントが無防備です（Important）。修正し、テストを追加しました。ほか Nit 2件。</div>
+  </div>
+  <p class="src">※ Copilot のマネージド「code review」をPR上で自動実行する設定（リポジトリ/組織のルールセット）も併用できます。</p>
+</section>
+
+<!-- ===================== 5. CODEX + COMMON ===================== -->
+<section id="codex">
+  <div class="sec-head"><span class="sec-num">05</span><h2>Codex・共通の型</h2></div>
+  <p class="sec-sub">Codex でも同じ。どのエージェントでも「実装とPRの間に1工程」を挟むのが本質。</p>
+
+  <p><strong>OpenAI Codex</strong> でも、セッションで差分レビューを指示できます。基準は <code>AGENTS.md</code> に置けば
+  3エージェント共通で効きます（Codex は <code>AGENTS.md</code> を連鎖で読む）。レビュー専用ルールは
+  <code>REVIEW.md</code> を参照させる運用が分かりやすいです。</p>
+
+  <div class="callout c-key">
+    <div class="ttl">◆ 共通の型：Step 5.5「セルフレビュー」</div>
+    どのエージェントでも本質は同じ ―― <strong>「実装 → セルフレビュー → 修正 → PR」を1つの工程にする</strong>。
+    統合ワークフローの <strong>Step 5.5</strong> として、<code>self-review</code> スキル/プロンプトで呼び出します。
+    呼び方だけが違います（Claude/Copilot: <code>/self-review</code>、Codex: self-review スキル）。
+  </div>
+</section>
+
+<!-- ===================== 6. LEARNING LOOP ===================== -->
+<section id="learnloop">
+  <div class="sec-head"><span class="sec-num">06</span><h2>指摘学習ループ</h2></div>
+  <p class="sec-sub">あなたが望む「指摘の傾向を学習して指示書/スキルに保持」を、3つの層で実現する。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="指摘の学習ループ">
+      <defs><marker id="ll" markerWidth="9" markerHeight="9" refX="4.5" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#6A5099"/></marker></defs>
+      <g font-family="Hiragino Sans,system-ui,sans-serif" font-size="12">
+        <rect x="24" y="74" width="150" height="52" rx="10" fill="#DEEAF1" stroke="#C5DAE7"/><text x="99" y="96" text-anchor="middle" font-weight="800" fill="#23415a">PRの指摘</text><text x="99" y="114" text-anchor="middle" font-size="10" fill="#33597a">人間/AIレビュー</text>
+        <rect x="214" y="74" width="170" height="52" rx="10" fill="#E8E1F2" stroke="#cfc1ea"/><text x="299" y="96" text-anchor="middle" font-weight="800" fill="#4a3a72">繰り返しを抽出</text><text x="299" y="114" text-anchor="middle" font-size="10" fill="#5a4d7a">learn-from-reviews</text>
+        <rect x="424" y="74" width="180" height="52" rx="10" fill="#F2DBCF" stroke="#E7C3B2"/><text x="514" y="96" text-anchor="middle" font-weight="800" fill="#A84A2A">ルールに昇格</text><text x="514" y="114" text-anchor="middle" font-size="10" fill="#8a4427">REVIEW.md / instructions / AGENTS</text>
+        <rect x="644" y="74" width="190" height="52" rx="10" fill="#E0EEE3" stroke="#BFDDC7"/><text x="739" y="96" text-anchor="middle" font-weight="800" fill="#234b30">次回のレビューで適用</text><text x="739" y="114" text-anchor="middle" font-size="10" fill="#33694a">同じ指摘が出ない</text>
+        <path d="M174,100 L212,100" stroke="#6A5099" stroke-width="1.8" marker-end="url(#ll)"/>
+        <path d="M384,100 L422,100" stroke="#6A5099" stroke-width="1.8" marker-end="url(#ll)"/>
+        <path d="M604,100 L642,100" stroke="#6A5099" stroke-width="1.8" marker-end="url(#ll)"/>
+        <path d="M739,126 C739,160 99,160 99,128" fill="none" stroke="#9B958B" stroke-width="1.4" stroke-dasharray="6 4" marker-end="url(#ll)"/>
+        <text x="430" y="184" text-anchor="middle" font-size="10.5" fill="#6E6960">回を追うごとにレビュー指摘が減っていく</text>
+      </g>
+    </svg>
+    <figcaption><b>図3</b>：受けた指摘を「使い捨て」にせず、<b>繰り返しパターンをルールに昇格</b>。そのルールが次回のセルフレビュー基準になるので、同種の指摘が再発しなくなる。</figcaption>
+  </figure>
+
+  <h3>3つの層</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>層</th><th>仕組み</th><th>性質</th></tr></thead>
+      <tbody>
+        <tr><td class="k">① ネイティブ自動</td><td><strong>Copilot Memory</strong>：レビューで学んだ規約を citation つきで自動保存し、コーディング/レビューに自動適用（面横断）。Claude は <code>CLAUDE.md</code>/<code>REVIEW.md</code> 違反をレビューが指摘。</td><td>自動・楽だが揮発的</td></tr>
+        <tr><td class="k">② ルールファイル<br>（手動・確定）</td><td>繰り返しの指摘を <strong><code>REVIEW.md</code></strong>（Claude）/ <strong><code>*.instructions.md</code></strong>（Copilot）/ <code>AGENTS.md</code> に明示ルール化。git管理で永続・レビュー可能。</td><td>恒久・あなたの統合キット向き</td></tr>
+        <tr><td class="k">③ 専用レビューア<br>（任意）</td><td><strong>CodeRabbit「Learnings」</strong>（返信・却下から学習）、<strong>Greptile</strong>（過去レビューから学習）、<strong>Qodo</strong>（Rule System）。</td><td>導入すれば学習を肩代わり</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ===================== 7. PIPELINE ===================== -->
+<section id="pipeline">
+  <div class="sec-head"><span class="sec-num">07</span><h2>learn-from-reviews パイプライン</h2></div>
+  <p class="sec-sub">②を半自動化するスキル。マージ済みPRの指摘を集め、繰り返しをルール案にして提示する。</p>
+
+  <figure>
+    <svg viewBox="0 0 860 170" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="learn-from-reviewsの処理">
+      <defs><marker id="pp" markerWidth="9" markerHeight="9" refX="4.5" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#6E6960"/></marker></defs>
+      <g font-family="Hiragino Sans,system-ui,sans-serif" font-size="11.5">
+        <rect x="24" y="58" width="150" height="54" rx="10" fill="#FBF8F3" stroke="#D6CCBD"/><text x="99" y="80" text-anchor="middle" font-weight="800">① 収集</text><text x="99" y="98" text-anchor="middle" font-size="9.5" fill="#6E6960" font-family="monospace">gh pr ... --comments</text>
+        <rect x="204" y="58" width="150" height="54" rx="10" fill="#E8E1F2" stroke="#cfc1ea"/><text x="279" y="80" text-anchor="middle" font-weight="800" fill="#4a3a72">② 抽出</text><text x="279" y="98" text-anchor="middle" font-size="9.5" fill="#5a4d7a">2回以上の繰り返し</text>
+        <rect x="384" y="58" width="150" height="54" rx="10" fill="#DEEAF1" stroke="#C5DAE7"/><text x="459" y="80" text-anchor="middle" font-weight="800" fill="#23415a">③ ルール化</text><text x="459" y="98" text-anchor="middle" font-size="9.5" fill="#33597a">短い命令形に</text>
+        <rect x="564" y="30" width="270" height="30" rx="8" fill="#F2DBCF" stroke="#E7C3B2"/><text x="699" y="50" text-anchor="middle" font-size="10.5" fill="#A84A2A">REVIEW.md / *.instructions.md（レビュー基準）</text>
+        <rect x="564" y="66" width="270" height="30" rx="8" fill="#F2DBCF" stroke="#E7C3B2"/><text x="699" y="86" text-anchor="middle" font-size="10.5" fill="#A84A2A">AGENTS.md（やってはいけない）</text>
+        <rect x="564" y="102" width="270" height="30" rx="8" fill="#E0EEE3" stroke="#BFDDC7"/><text x="699" y="122" text-anchor="middle" font-size="10.5" fill="#234b30">memory-bank/decisions（重要方針はADR）</text>
+        <path d="M174,85 L202,85" stroke="#6E6960" stroke-width="1.6" marker-end="url(#pp)"/>
+        <path d="M354,85 L382,85" stroke="#6E6960" stroke-width="1.6" marker-end="url(#pp)"/>
+        <path d="M534,82 L562,52" stroke="#6E6960" stroke-width="1.4" marker-end="url(#pp)"/>
+        <path d="M534,85 L562,81" stroke="#6E6960" stroke-width="1.4" marker-end="url(#pp)"/>
+        <path d="M534,88 L562,112" stroke="#6E6960" stroke-width="1.4" marker-end="url(#pp)"/>
+      </g>
+    </svg>
+    <figcaption><b>図4</b>：<b>④ 追記先を提案し、承認後に反映</b>（コードは変えない）。週次などで回すと、指摘の傾向が恒久ルールに蓄積される。</figcaption>
+  </figure>
+
+  <p>収集はGitHubなら <code>gh</code> で行います。スキルが裏でこんなコマンドを使うイメージです。</p>
+  <pre><code><span class="c"># 最近マージした自分のPRを列挙</span>
+gh pr list --state merged --author @me --limit 20 --json number,title
+
+<span class="c"># 各PRのレビューコメントを取得</span>
+gh pr view <span class="k">&lt;number&gt;</span> --comments</code></pre>
+
+  <div class="callout c-info">
+    <div class="ttl">▶ 指示例</div>
+    <div class="you" style="margin-top:8px"><span class="who">▷ あなた</span><span class="cmd"><b>/learn-from-reviews</b>  最近マージしたPRのレビュー指摘から、繰り返し出ている
+ものを REVIEW.md と AGENTS.md のルールに追記する案を出して。</span></div>
+    <div class="agent"><span class="who">エージェント</span>直近15PRを分析。3回以上出た指摘: 「ログにメール/ユーザーIDを出している」「新規エンドポイントにテストが無い」。これらを <code>REVIEW.md</code> の「常にチェック」に追記する差分を提示します（承認後に反映、コードは変更しません）。</div>
+  </div>
+</section>
+
+<!-- ===================== 8. KIT ===================== -->
+<section id="kit">
+  <div class="sec-head"><span class="sec-num">08</span><h2>統合キットへの組み込み</h2></div>
+  <p class="sec-sub">統合キット（spec-driven-handoff-kit）に、レビューの2ループを実ファイルとして追加済み。</p>
+
+  <p>別資料の統合キットに、次を追加しました。コピーするだけで2ループが使えます。</p>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>追加ファイル</th><th>役割</th><th>配置先</th></tr></thead>
+      <tbody>
+        <tr><td class="k">shared/REVIEW.md</td><td>レビュー専用ルール（学習した指摘を蓄積）</td><td>リポジトリ直下（Claudeが最優先で読む）</td></tr>
+        <tr><td class="k">skills/self-review/</td><td>PR前の敵対的セルフレビュー＋修正</td><td><code>.claude/skills/</code>（Claude/Codex）</td></tr>
+        <tr><td class="k">skills/learn-from-reviews/</td><td>指摘の繰り返しを抽出しルール化</td><td>同上</td></tr>
+        <tr><td class="k">copilot/prompts/self-review.prompt.md</td><td>Copilot 版 self-review</td><td><code>.github/prompts/</code></td></tr>
+        <tr><td class="k">copilot/prompts/learn-from-reviews.prompt.md</td><td>Copilot 版 learn-from-reviews</td><td><code>.github/prompts/</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>あわせて <code>AGENTS.md</code> のワークフローに <strong>Step 5.5「自己レビュー」</strong>を追加し、
+  「コードレビューと指摘の学習」の節を加えました。SETUP.md のコマンド対応表にも
+  <code>/self-review</code> と <code>/learn-from-reviews</code> を追記済みです。</p>
+
+  <div class="callout c-good">
+    <div class="ttl">✔ 完成するループ</div>
+    <strong>実装 → <code>/self-review</code> → 修正 → PR → 指摘 → <code>/learn-from-reviews</code> →
+    REVIEW.md にルール追記 → 次回の <code>/self-review</code> がそのルールで自動チェック</strong>。
+    これで同じ指摘が出る前に潰れるようになります。
+  </div>
+</section>
+
+<!-- ===================== 9. EXAMPLE ===================== -->
+<section id="example">
+  <div class="sec-head"><span class="sec-num">09</span><h2>実践例（指示例つき）</h2></div>
+  <p class="sec-sub">「指摘 → 学習 → 再発しない」を、1つの流れで具体的に。</p>
+
+  <p><strong>① PR前のセルフレビューで Important を潰す</strong></p>
+  <div class="you"><span class="who">▷ あなた</span><span class="cmd"><b>/self-review</b></span></div>
+  <div class="agent"><span class="who">エージェント</span>差分をレビュー: <span class="sev sev-i">Important</span>「再設定エンドポイントにレート制限が無い」を修正、テスト追加。<span class="sev sev-n">Nit</span> 2件は要約に記載。<code>npm test</code> 緑。→ PRを作成できます。</div>
+
+  <p style="margin-top:18px"><strong>② PRで人間レビュアーが指摘 → 修正</strong></p>
+  <div class="agent"><span class="who">レビュアー（人間）</span>ログに <code>user.email</code> がそのまま出ています。PIIなので消してください。</div>
+  <div class="you"><span class="who">▷ あなた</span><span class="cmd">指摘の通り、ログから user.email を除いて。マスクするかIDだけにして。</span></div>
+
+  <p style="margin-top:18px"><strong>③ 後日、指摘を学習してルール化（再発防止）</strong></p>
+  <div class="you"><span class="who">▷ あなた</span><span class="cmd"><b>/learn-from-reviews</b></span></div>
+  <div class="agent"><span class="who">エージェント</span>直近のPRで「ログのPII」が3回指摘されています。<code>REVIEW.md</code> の「常にチェック」に <strong>「ログにメール/ユーザーID/リクエストボディを出さない」</strong> を追記する差分を提示します（承認後に反映）。</div>
+
+  <p style="margin-top:18px"><strong>④ 次のタスク ― 同じ指摘はもう出ない</strong></p>
+  <div class="you"><span class="who">▷ あなた</span><span class="cmd"><b>/self-review</b></span></div>
+  <div class="agent"><span class="who">エージェント</span>（REVIEW.md のルールを適用）<span class="sev sev-i">Important</span>「<code>logger.info(user.email)</code> はPII出力。マスクが必要」を検出し、<strong>PRを出す前に</strong>修正しました。</div>
+
+  <div class="callout c-key">
+    <div class="ttl">◆ これが狙い</div>
+    一度人間に指摘された「ログPII」が <code>REVIEW.md</code> のルールになり、<strong>次回は人間に見せる前に
+    セルフレビューが捕まえる</strong>。レビュー往復が減り、レビュアーはより本質的な点に集中できます。
+  </div>
+</section>
+
+<!-- ===================== 10. TOOLS ===================== -->
+<section id="tools">
+  <div class="sec-head"><span class="sec-num">10</span><h2>専用レビューア・注意点</h2></div>
+  <p class="sec-sub">学習機能つきの専用ツールを足す選択肢と、運用上の落とし穴。</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>ツール</th><th>特徴（学習面）</th></tr></thead>
+      <tbody>
+        <tr><td class="k">CodeRabbit</td><td>PRワークフローが充実。<strong>「Learnings」</strong>で返信・却下から学習し好みを記憶。path filters でノイズ調整。</td></tr>
+        <tr><td class="k">Greptile</td><td>フルコードベース文脈に強く、<strong>過去レビューから学習</strong>して精度が上がる。大規模・複雑な依存向き。</td></tr>
+        <tr><td class="k">Qodo</td><td>ガバナンス志向。<strong>Rule System</strong> で組織横断のルールを定義・強制。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout c-warn">
+    <div class="ttl">⚠ 注意点</div>
+    <ul class="clean" style="margin:6px 0 0">
+      <li><strong>人間レビューの代替ではない</strong>：セルフレビューは「出す前に明らかな問題を潰す」もの。最終判断は人間。</li>
+      <li><strong>マネージドCode Reviewは有料</strong>：Claude Code の GitHub App 版は Team/Enterprise・約$15-25/review。<strong>ローカル <code>/code-review</code> はセッション内で使える</strong>。</li>
+      <li><strong>ルールは短く</strong>：Copilot instructions は4000字制限。長い <code>REVIEW.md</code> も効果が薄れる。<code>learn-from-reviews</code> で重複・陳腐化を整理する。</li>
+      <li><strong>ノイズ調整</strong>：専用レビューアは path filters・learnings で「何を指摘するか」を絞らないと疲弊する。</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ===================== 11. REFS ===================== -->
+<section id="refs">
+  <div class="sec-head"><span class="sec-num">11</span><h2>出典</h2></div>
+  <p class="sec-sub">2026年6月時点の公開情報。付随キットに self-review / learn-from-reviews を追加済み。</p>
+  <ul class="clean">
+    <li><a href="https://code.claude.com/docs/en/code-review">Code Review ― Claude Code Docs</a>（<code>/code-review</code>・<code>REVIEW.md</code>・重大度・ultrareview）</li>
+    <li><a href="https://github.com/anthropics/claude-code-security-review">claude-code-security-review（公式 GitHub Action）</a></li>
+    <li><a href="https://docs.github.com/en/copilot/tutorials/customize-code-review">Customize Copilot code review ― GitHub Docs</a> ／ <a href="https://github.blog/ai-and-ml/unlocking-the-full-power-of-copilot-code-review-master-your-instructions-files/">Master your instructions files（GitHub Blog）</a></li>
+    <li><a href="https://github.blog/ai-and-ml/github-copilot/building-an-agentic-memory-system-for-github-copilot/">Building an agentic memory system for GitHub Copilot（Copilot Memory）</a></li>
+    <li><a href="https://www.greptile.com/content-library/best-ai-code-review-tools">Best AI Code Review Tools 2026</a>（CodeRabbit Learnings・Greptile・Qodo）</li>
+    <li>関連の自作資料：「統合エージェント開発ワークフロー 構築手順書」「実践ハンズオン」／ 構築キット <code>spec-driven-handoff-kit/</code></li>
+  </ul>
+</section>
+
+<p style="text-align:center; color:var(--faint); font-size:13px; margin:40px 0 10px">― 以上 ―</p>
+
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <h4>このドキュメントについて</h4>
+    <p style="color:#C9C2B6">2026年6月時点の公開情報（Claude Code Docs、GitHub Copilot Docs/Blog、各レビューツール）に基づく。付随する構築キット（spec-driven-handoff-kit）に self-review / learn-from-reviews スキルと REVIEW.md を追加済みです。コマンド名・仕様はツールの版で変わり得ます。</p>
+    <p style="color:#9B958B;font-size:12.5px">← <a href="index.html">ナレッジベース（ハブ）に戻る</a></p>
+  </div>
+</footer>
+
+</body>
+</html>
